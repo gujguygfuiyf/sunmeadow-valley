@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="晨露谷物语 (Sunmeadow Valley) — 完整星露谷风格 2D 像素田园游戏：四季种田、天气体力烹饪、砍树挖矿、钓鱼、工匠制作、鸡舍牧场、农舍装修、小镇村民剧情与社区献祭"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2363351c'/%3E%3Crect x='2' y='2' width='12' height='12' rx='2' fill='%237bc048'/%3E%3Crect x='7' y='5' width='2' height='7' fill='%233b6e1c'/%3E%3Crect x='4' y='5' width='3' height='3' fill='%23d8f79c'/%3E%3Crect x='9' y='4' width='3' height='3' fill='%23ffe26a'/%3E%3C/svg%3E"
+    />
+    <title>晨露谷物语 · Sunmeadow Valley</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main id="game-root" class="game-root" aria-label="晨露谷物语游戏画面">
+      <h1 class="sr-only">晨露谷物语 — 经典像素田园农场游戏</h1>
+      <canvas id="game-canvas" class="game-canvas"></canvas>
+
+      <!-- Top-left location, weather, live minimap, mine elevator & crop inspector -->
+      <aside id="hud-left" class="hud-left">
+        <div class="wood-badge brand-badge">
+          <span class="brand-dot" aria-hidden="true"></span>
+          <span class="brand-title">晨露谷物语</span>
+          <span id="hud-location" class="location-tag">晨露农场</span>
+          <span id="hud-weather" class="weather-tag">晴朗 ☀</span>
+        </div>
+
+        <div id="hud-festival-banner" class="festival-banner hidden">
+          🎉 今日节日：<span id="hud-festival-name">春季花舞节</span>（去小镇广场庆祝！）
+        </div>
+
+        <!-- Compact Live Minimap (clickable to open World Map / Fast Travel) -->
+        <button id="btn-minimap" class="wood-panel minimap-card" type="button" title="点击打开世界地图与矿车快速旅行 (M)">
+          <canvas id="minimap-canvas" class="minimap-canvas" width="144" height="104"></canvas>
+          <span class="minimap-hint">地图 (M)</span>
+        </button>
+
+        <!-- Underground Mine Floor & Elevator Panel (only shown in MineScene) -->
+        <div id="mine-hud" class="wood-panel mine-hud hidden">
+          <div class="mine-hud-row">
+            <strong id="mine-floor-label">地下第 1 层</strong>
+            <span id="mine-slimes-label" class="mine-meta">史莱姆：2</span>
+          </div>
+          <div class="mine-elevator-row">
+            <span class="mine-meta">电梯：</span>
+            <button class="wood-btn mini-btn mine-elev-btn" data-floor="1" type="button">1F</button>
+            <button class="wood-btn mini-btn mine-elev-btn" data-floor="5" type="button">5F</button>
+            <button class="wood-btn mini-btn mine-elev-btn" data-floor="10" type="button">10F</button>
+            <button class="wood-btn mini-btn mine-elev-btn" data-floor="15" type="button">15F</button>
+          </div>
+        </div>
+
+        <div id="tile-inspector" class="wood-panel tile-inspector hidden" aria-live="polite">
+          <div class="inspector-header">
+            <span id="inspector-name" class="inspector-name">防风草</span>
+            <span id="inspector-water-pill" class="water-pill">需浇水</span>
+          </div>
+          <div class="inspector-progress-track">
+            <div id="inspector-progress-fill" class="inspector-progress-fill"></div>
+          </div>
+          <div id="inspector-meta" class="inspector-meta">生长进度 0 / 4 天</div>
+        </div>
+      </aside>
+
+      <!-- Top-right Stardew-style wooden Status Plaque (Day, Clock, Gold, Energy, HP) -->
+      <header id="hud-top-right" class="hud-top-right">
+        <div class="wood-panel status-plaque">
+          <div class="status-row status-date-row">
+            <span id="hud-season" class="season-tag">春季</span>
+            <span id="hud-day" class="day-text">第 1 天</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="status-row status-clock-row">
+            <span id="hud-time" class="clock-text">06:00</span>
+            <span id="hud-dayphase" class="phase-text">清晨</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="status-row status-gold-row">
+            <span class="gold-coin" aria-hidden="true">G</span>
+            <span id="hud-gold" class="gold-text">300</span>
+          </div>
+          <div class="status-divider"></div>
+          <div class="stat-bar-row">
+            <span class="stat-label">体力</span>
+            <div class="stat-track">
+              <div id="hud-energy-fill" class="stat-fill energy-fill" style="width: 100%"></div>
+            </div>
+            <span id="hud-energy-text" class="stat-num">100</span>
+          </div>
+          <div class="stat-bar-row">
+            <span class="stat-label">生命</span>
+            <div class="stat-track">
+              <div id="hud-hp-fill" class="stat-fill hp-fill" style="width: 100%"></div>
+            </div>
+            <span id="hud-hp-text" class="stat-num">100</span>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <button id="btn-sleep" class="wood-btn primary-btn" type="button" title="回到农舍休息并推进至明天 (N)">
+            休息进入明天 (N)
+          </button>
+          <button id="btn-decorate" class="wood-btn accent-btn hidden" type="button" title="开启或关闭农舍家具摆放模式 (F)">
+            装修农舍 (F)
+          </button>
+          <div class="quick-actions-row">
+            <button id="btn-backpack" class="wood-btn icon-btn" type="button" title="打开 36 格完整背包 (I)">背包</button>
+            <button id="btn-crafting" class="wood-btn icon-btn" type="button" title="打开制作合成工坊 (K)">制作</button>
+            <button id="btn-quests" class="wood-btn icon-btn" type="button" title="查看小镇每日委托 (J)">委托</button>
+          </div>
+          <div class="quick-actions-row">
+            <button id="btn-bundles" class="wood-btn icon-btn" type="button" title="社区中心收集包与图鉴 (C)">献祭</button>
+            <button id="btn-villagers" class="wood-btn icon-btn" type="button" title="村民好感手册 (V)">村民</button>
+            <button id="btn-map" class="wood-btn icon-btn" type="button" title="世界地图与快速旅行 (M)">地图</button>
+          </div>
+          <div class="quick-actions-row">
+            <button id="btn-shop" class="wood-btn icon-btn" type="button" title="皮埃尔种子铺 (B)">种子</button>
+            <button id="btn-furniture" class="wood-btn icon-btn" type="button" title="罗宾木工与牧场">木工</button>
+            <button id="btn-blacksmith" class="wood-btn icon-btn" type="button" title="克林特铁匠铺升级农具">铁匠</button>
+          </div>
+          <div class="quick-actions-row">
+            <button id="btn-bgm" class="wood-btn icon-btn" type="button" title="开关田园背景音乐">音乐:关</button>
+            <button id="btn-mute" class="wood-btn icon-btn" type="button" title="开关音效">音效:开</button>
+            <button id="btn-help" class="wood-btn icon-btn" type="button" title="查看操作说明 (H)">帮助</button>
+            <button id="btn-reset" class="wood-btn icon-btn danger-btn" type="button" title="重置存档">重置</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Context interaction prompt -->
+      <div id="context-prompt" class="context-prompt hidden" role="status" aria-live="polite"></div>
+
+      <!-- Toast stack -->
+      <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+      <!-- Stardew-style Fishing Mini-Game Overlay -->
+      <section id="fishing-overlay" class="fishing-overlay hidden" aria-label="钓鱼小游戏">
+        <div class="wood-panel fishing-panel">
+          <div class="fishing-title" id="fishing-status-title">等待咬钩……</div>
+          <div class="fishing-columns">
+            <div class="fishing-water-col">
+              <div id="fishing-bar" class="fishing-catch-bar"></div>
+              <div id="fishing-fish" class="fishing-fish-icon">🐟</div>
+            </div>
+            <div class="fishing-progress-col">
+              <div id="fishing-progress-fill" class="fishing-progress-fill"></div>
+            </div>
+          </div>
+          <div class="fishing-hint">按住 <kbd>空格</kbd> 或 <kbd>鼠标左键</kbd> 上浮绿条跟住小鱼！</div>
+          <button id="btn-cancel-fishing" class="wood-btn mini-btn" type="button">收竿取消 (Esc)</button>
+        </div>
+      </section>
+
+      <!-- Farmhouse Decoration Dock -->
+      <section id="decorate-dock" class="decorate-dock hidden" aria-label="农舍家具装修栏">
+        <div class="wood-panel decorate-dock-card">
+          <div class="decorate-dock-header">
+            <strong>家具收纳箱（左键摆放 · 右键收回地板家具）</strong>
+            <div class="decorate-dock-actions">
+              <button id="btn-dock-catalog" class="wood-btn icon-btn" type="button">去买家具</button>
+              <button id="btn-dock-exit" class="wood-btn icon-btn primary-btn" type="button">完成装修</button>
+            </div>
+          </div>
+          <div id="decorate-furniture-list" class="decorate-furniture-list"></div>
+        </div>
+      </section>
+
+      <!-- Bottom-center wooden Hotbar -->
+      <nav id="hud-hotbar-wrap" class="hud-hotbar-wrap" aria-label="快捷工具栏">
+        <div id="selected-item-banner" class="selected-item-banner">
+          <span id="selected-item-name" class="selected-item-name">锄头</span>
+          <span id="selected-item-desc" class="selected-item-desc">开垦草地为农田</span>
+        </div>
+        <div id="hotbar-slots" class="wood-panel hotbar-slots" role="toolbar"></div>
+      </nav>
+
+      <!-- ================= MODALS ================= -->
+
+      <!-- NPC Dialogue & Heart Event Overlay -->
+      <section id="modal-dialogue" class="dialogue-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogue-npc-name">
+        <div class="wood-panel dialogue-box">
+          <div class="dialogue-left">
+            <div class="portrait-frame">
+              <img id="dialogue-portrait" class="portrait-img" src="" alt="村民头像" />
+            </div>
+            <div id="dialogue-npc-name" class="dialogue-npc-name">艾米丽</div>
+            <div id="dialogue-npc-role" class="dialogue-npc-role">花艺与裁缝姑娘</div>
+            <div id="dialogue-hearts" class="hearts-row" aria-label="好感度"></div>
+          </div>
+
+          <div class="dialogue-right">
+            <div id="dialogue-event-banner" class="event-banner hidden"></div>
+            <p id="dialogue-text" class="dialogue-text"></p>
+            <div id="dialogue-reward-note" class="event-reward hidden"></div>
+
+            <div id="dialogue-gift-bar" class="dialogue-gift-bar">
+              <span class="dialogue-gift-label">赠送礼物：</span>
+              <div id="dialogue-gift-buttons" class="dialogue-gift-buttons"></div>
+            </div>
+
+            <div class="dialogue-footer">
+              <button id="btn-dialogue-shop" class="wood-btn primary-btn hidden" type="button">打开商店</button>
+              <button id="btn-dialogue-close" class="wood-btn" type="button">结束对话 (Esc)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 36-Slot Full Backpack Modal -->
+      <section id="modal-backpack" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="backpack-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="backpack-title" class="modal-title">农夫大背包（36 格）</h2>
+              <p class="modal-subtitle">第一排为快捷栏（1-9）。依次点击两个格子可交换位置或合并堆叠</p>
+            </div>
+            <div class="header-btn-group">
+              <button id="btn-backpack-sort" class="wood-btn" type="button">一键整理</button>
+              <button id="btn-close-backpack" class="wood-btn close-btn" type="button">✕</button>
+            </div>
+          </div>
+          <div id="backpack-grid" class="slot-grid-9"></div>
+          <div id="backpack-detail-bar" class="backpack-detail-bar">
+            <span id="backpack-detail-text">点击任意物品查看详情、交换格位或直接食用</span>
+            <button id="btn-backpack-eat" class="wood-btn primary-btn hidden" type="button">食用恢复体力</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Storage Chest Transfer Modal -->
+      <section id="modal-chest" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="chest-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="chest-title" class="modal-title">木质储物箱（24 格）</h2>
+              <p class="modal-subtitle">点击储物箱物品取出到背包，或点击下方背包物品存入箱中</p>
+            </div>
+            <button id="btn-close-chest" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div class="shop-section-title">储物箱物品（点击取出）</div>
+          <div id="chest-grid" class="slot-grid-8"></div>
+          <div class="shop-section-title">随身背包（点击存入）</div>
+          <div id="chest-backpack-grid" class="slot-grid-9"></div>
+        </div>
+      </section>
+
+      <!-- Crafting Workshop Modal -->
+      <section id="modal-crafting" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="crafting-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="crafting-title" class="modal-title">手工制作与机器工坊</h2>
+              <p class="modal-subtitle">使用木材、石头、纤维与金属锭打造储物箱、洒水器、稻草人与工匠加工桶</p>
+            </div>
+            <button id="btn-close-crafting" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="crafting-list" class="shop-list"></div>
+        </div>
+      </section>
+
+      <!-- Kitchen Cooking Modal -->
+      <section id="modal-cooking" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cooking-title">
+        <div class="wood-panel modal-card shop-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="cooking-title" class="modal-title">农舍厨房 · 田园料理</h2>
+              <p class="modal-subtitle">用新鲜农产、鱼获与蛋奶烹制热气腾腾的美味，大幅恢复体力与生命</p>
+            </div>
+            <button id="btn-close-cooking" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="cooking-list" class="shop-list"></div>
+        </div>
+      </section>
+
+      <!-- Seed Shop Modal -->
+      <section id="modal-shop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+        <div class="wood-panel modal-card shop-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="shop-title" class="modal-title">皮埃尔的田园杂货铺</h2>
+              <p id="shop-subtitle" class="modal-subtitle">供应当前季节的精选种子，并高价收购农产与工匠制品</p>
+            </div>
+            <button id="btn-close-shop" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div class="shop-gold-bar">
+            <span>当前持有金币：</span>
+            <strong id="shop-gold-value" class="shop-gold-value">300 G</strong>
+          </div>
+          <div class="shop-section-title">当季种子货架</div>
+          <div id="shop-seed-list" class="shop-list"></div>
+          <div class="shop-section-title">快速出售背包农产 / 鱼获 / 工匠制品</div>
+          <div id="shop-sell-list" class="shop-list sell-list"></div>
+        </div>
+      </section>
+
+      <!-- Robin's Carpenter, Buildings & Ranch Modal -->
+      <section id="modal-furniture" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="furniture-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="furniture-title" class="modal-title">罗宾木工坊 · 家具与牧场建设</h2>
+              <p class="modal-subtitle">选购温馨农舍家具、建造鸡舍与大畜棚、领养可爱牧场动物</p>
+            </div>
+            <button id="btn-close-furniture" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div class="shop-gold-bar">
+            <span>持有金币 & 建材：</span>
+            <strong id="furniture-gold-value" class="shop-gold-value">300 G</strong>
+          </div>
+          <div class="tab-bar">
+            <button class="wood-btn tab-btn active" data-robin-tab="buildings" type="button">牧场建筑（鸡舍/畜棚）</button>
+            <button class="wood-btn tab-btn" data-robin-tab="animals" type="button">领养动物</button>
+            <button class="wood-btn tab-btn" data-robin-tab="furniture" type="button">农舍家具目录</button>
+          </div>
+          <div id="robin-tab-content" class="shop-list"></div>
+        </div>
+      </section>
+
+      <!-- Clint's Blacksmith Tool Upgrade Modal -->
+      <section id="modal-blacksmith" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="blacksmith-title">
+        <div class="wood-panel modal-card shop-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="blacksmith-title" class="modal-title">克林特铁匠铺 · 农具升级锻造</h2>
+              <p class="modal-subtitle">消耗金属锭与金币升级农具，解锁多格范围耕地/浇水与更强采伐威力</p>
+            </div>
+            <button id="btn-close-blacksmith" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div class="shop-gold-bar">
+            <span>持有金币 & 金属锭：</span>
+            <strong id="blacksmith-wallet" class="shop-gold-value">300 G</strong>
+          </div>
+          <div id="blacksmith-list" class="shop-list"></div>
+        </div>
+      </section>
+
+      <!-- Town Notice Board Daily Quest Modal -->
+      <section id="modal-quests" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="quests-title">
+        <div class="wood-panel modal-card shop-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="quests-title" class="modal-title">晨露小镇公告栏 · 每日委托</h2>
+              <p class="modal-subtitle">帮助小镇村民收集所需物品，获得双倍金币与 +120 大幅好感奖励</p>
+            </div>
+            <button id="btn-close-quests" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="quest-content"></div>
+        </div>
+      </section>
+
+      <!-- Community Center Bundles & Encyclopedia Modal -->
+      <section id="modal-bundles" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="bundles-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="bundles-title" class="modal-title">社区中心献祭 & 晨露谷图鉴</h2>
+              <p id="bundles-subtitle" class="modal-subtitle">献祭各类特产解锁四季温室、矿车快传与全层矿洞电梯！</p>
+            </div>
+            <button id="btn-close-bundles" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div class="tab-bar">
+            <button class="wood-btn tab-btn active" data-cc-tab="bundles" type="button">★ 社区中心收集包</button>
+            <button class="wood-btn tab-btn" data-cc-tab="encyclopedia" type="button">📖 全收集图鉴</button>
+          </div>
+          <div id="bundles-tab-content"></div>
+        </div>
+      </section>
+
+      <!-- World Map & Minecart Fast Travel Modal -->
+      <section id="modal-map" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="map-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="map-title" class="modal-title">晨露谷全景地图 & 矿车驿站</h2>
+              <p id="map-fast-travel-status" class="modal-subtitle">查看山谷四大区域连通路线</p>
+            </div>
+            <button id="btn-close-map" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="world-map-grid" class="world-map-grid"></div>
+        </div>
+      </section>
+
+      <!-- Retro TV Weather Forecast Modal -->
+      <section id="modal-tv" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="tv-title">
+        <div class="wood-panel modal-card shop-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="tv-title" class="modal-title">📺 晨露谷田园广播电视</h2>
+              <p class="modal-subtitle">每日气象预报 & 生活农耕频道</p>
+            </div>
+            <button id="btn-close-tv" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="tv-content" class="tv-content"></div>
+        </div>
+      </section>
+
+      <!-- Villagers Friendship Modal -->
+      <section id="modal-villagers" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="villagers-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="villagers-title" class="modal-title">晨露小镇 · 村民好感手册</h2>
+              <p class="modal-subtitle">村民会按早/午/晚日程表漫步小镇；达到 2 心与 4 心会触发专属剧情并获赠食谱或限定家具！</p>
+            </div>
+            <button id="btn-close-villagers" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <div id="villagers-list" class="villagers-list"></div>
+        </div>
+      </section>
+
+      <!-- End of Day Summary Modal -->
+      <section id="modal-summary" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+        <div class="wood-panel modal-card summary-modal">
+          <div class="summary-stars" aria-hidden="true">✦ ☽ ✦</div>
+          <h2 id="summary-title" class="modal-title">第 1 天 · 农场日结单</h2>
+          <p id="summary-subtitle" class="modal-subtitle">今晚的辛勤劳作已经结算完毕</p>
+          <div id="summary-lines" class="summary-lines"></div>
+          <div class="summary-total-row">
+            <span>今日出货总收入</span>
+            <strong id="summary-total-gold">+0 G</strong>
+          </div>
+          <div id="summary-growth-note" class="summary-growth-note"></div>
+          <button id="btn-next-morning" class="wood-btn primary-btn summary-confirm-btn" type="button">
+            在农舍醒来，迎接新的一天 ☀
+          </button>
+        </div>
+      </section>
+
+      <!-- Controls Help Modal -->
+      <section id="modal-help" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <h2 id="help-title" class="modal-title">晨露谷完全操作指南</h2>
+            <button id="btn-close-help" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+          <ul class="help-list">
+            <li><kbd>W A S D</kbd> / <kbd>方向键</kbd>：探索农场、农舍小屋、晨露小镇与东北山路矿洞</li>
+            <li><kbd>1 - 9</kbd> / <kbd>滚轮</kbd>：切换快捷栏（1 锄头、2 喷壶、3 伐木斧、4 十字镐、5 镰刀、6 竹钓竿、7 铁剑、8-9 种子）</li>
+            <li><kbd>左键</kbd> / <kbd>空格</kbd>：耕地、浇水、砍树、挖矿、甩竿钓鱼、挥剑击退史莱姆、放置机器</li>
+            <li><kbd>E</kbd> / <kbd>右键</kbd>：收获作物、抚摸动物、与机器/电视/厨房/村民互动，或直接食用手中食物恢复体力</li>
+            <li><kbd>I</kbd> 36格大背包 · <kbd>K</kbd> 制作工坊 · <kbd>J</kbd> 每日委托 · <kbd>C</kbd> 社区中心献祭与图鉴 · <kbd>V</kbd> 村民好感 · <kbd>M</kbd> 世界地图 · <kbd>F</kbd> 农舍装修 · <kbd>N</kbd> 休息进入明天</li>
+          </ul>
+          <p class="help-tip">
+            成长路线：砍树敲石头造<strong>储物箱/稻草人/熔炉</strong> → 去东北山路<strong>晨露矿洞</strong>挖矿熔锭升级大范围农具 → 造<strong>果酱桶/酿酒桶/鸡舍畜棚</strong>赚大钱 → 完成<strong>社区中心收集包</strong>解锁<strong>四季温室与矿车快传</strong>！
+          </p>
+        </div>
+      </section>
+
+      <!-- Night Fade Overlay -->
+      <div id="night-overlay" class="night-overlay" aria-hidden="true"></div>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
