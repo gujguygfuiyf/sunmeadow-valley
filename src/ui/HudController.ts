@@ -22,8 +22,11 @@ import {
   UPGRADEABLE_TOOL_SPRITES,
 } from '../data/mining';
 import { getNpcDef, NPC_IDS } from '../data/npcs';
+import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
 import { COOKING_RECIPES } from '../data/recipes';
 import { MAX_HEARTS } from '../systems/NpcSystem';
+import { PET_MAX_FRIENDSHIP, PET_MAX_HEARTS } from '../systems/PetSystem';
+import { BirthdayOverlay } from './BirthdayOverlay';
 import { MinimapRenderer } from './MinimapRenderer';
 
 type ModalKind =
@@ -31,6 +34,8 @@ type ModalKind =
   | 'furniture'
   | 'blacksmith'
   | 'villagers'
+  | 'pets'
+  | 'birthday'
   | 'backpack'
   | 'chest'
   | 'crafting'
@@ -50,6 +55,7 @@ type ModalKind =
 export class HudController {
   private readonly world: GameWorld;
   private readonly minimap: MinimapRenderer;
+  private readonly birthdayOverlay: BirthdayOverlay;
 
   // Core HUD elements
   private readonly locationEl = mustGetEl('hud-location');
@@ -155,6 +161,10 @@ export class HudController {
   private readonly villagersModalEl = mustGetEl('modal-villagers');
   private readonly villagersListEl = mustGetEl('villagers-list');
 
+  private readonly petsModalEl = mustGetEl('modal-pets');
+  private readonly petsBowlBarEl = mustGetEl('pets-bowl-bar');
+  private readonly petsListEl = mustGetEl('pets-list');
+
   private readonly summaryModalEl = mustGetEl('modal-summary');
   private readonly summaryTitleEl = mustGetEl('summary-title');
   private readonly summaryLinesEl = mustGetEl('summary-lines');
@@ -175,12 +185,17 @@ export class HudController {
   constructor(world: GameWorld) {
     this.world = world;
     this.minimap = new MinimapRenderer(mustGetEl('minimap-canvas') as HTMLCanvasElement);
+    this.birthdayOverlay = new BirthdayOverlay(world, () => this.closeModals());
     this.bindButtons();
     this.subscribeEvents();
   }
 
   hasOpenModal(): boolean {
     return this.activeModal !== null;
+  }
+
+  isBirthdayOpen(): boolean {
+    return this.birthdayOverlay.isOpen();
   }
 
   /** Called every render frame to animate the live Minimap and Fishing Mini-Game smoothly. */
@@ -211,6 +226,9 @@ export class HudController {
     }
     if (this.activeModal === 'chest') {
       this.world.activeChestUid = null;
+    }
+    if (this.birthdayOverlay.isOpen()) {
+      this.birthdayOverlay.close();
     }
     for (const el of this.getStandardModals()) {
       el.classList.add('hidden');
@@ -271,6 +289,18 @@ export class HudController {
     this.openStandardModal('villagers', this.villagersModalEl, () => this.renderVillagersPanel());
   }
 
+  openPets(): void {
+    this.openStandardModal('pets', this.petsModalEl, () => this.renderPetsModal());
+  }
+
+  openBirthday(): void {
+    if (this.activeModal === 'summary') return;
+    this.closeModals();
+    this.birthdayOverlay.open();
+    this.activeModal = 'birthday';
+    this.world.input.setBlocked(true);
+  }
+
   openHelp(): void {
     this.openStandardModal('help', this.helpModalEl, () => {});
   }
@@ -307,6 +337,7 @@ export class HudController {
       this.mapModalEl,
       this.tvModalEl,
       this.villagersModalEl,
+      this.petsModalEl,
       this.helpModalEl,
     ];
   }
@@ -346,6 +377,8 @@ export class HudController {
     mustGetEl('btn-quests').addEventListener('click', () => toggleOrOpen('quests', () => this.openQuests()));
     mustGetEl('btn-bundles').addEventListener('click', () => toggleOrOpen('bundles', () => this.openBundles()));
     mustGetEl('btn-villagers').addEventListener('click', () => toggleOrOpen('villagers', () => this.openVillagers()));
+    mustGetEl('btn-pets').addEventListener('click', () => toggleOrOpen('pets', () => this.openPets()));
+    mustGetEl('btn-yiyi-birthday').addEventListener('click', () => toggleOrOpen('birthday', () => this.openBirthday()));
     mustGetEl('btn-shop').addEventListener('click', () => toggleOrOpen('shop', () => this.openShop()));
     mustGetEl('btn-furniture').addEventListener('click', () => toggleOrOpen('furniture', () => this.openFurnitureShop()));
     mustGetEl('btn-blacksmith').addEventListener('click', () => toggleOrOpen('blacksmith', () => this.openBlacksmith()));
@@ -420,6 +453,7 @@ export class HudController {
       'btn-close-map',
       'btn-close-tv',
       'btn-close-villagers',
+      'btn-close-pets',
       'btn-close-help',
       'btn-dialogue-close',
     ];
@@ -482,6 +516,7 @@ export class HudController {
       if (this.activeModal === 'furniture') this.renderRobinModal();
       if (this.activeModal === 'quests') this.renderQuestsModal();
       if (this.activeModal === 'bundles') this.renderBundlesModal();
+      if (this.activeModal === 'pets') this.renderPetsModal();
     });
 
     bus.on('gold:changed', ({ gold }) => {
@@ -564,6 +599,9 @@ export class HudController {
     bus.on('livestock:changed', () => {
       if (this.activeModal === 'furniture') this.renderRobinModal();
     });
+    bus.on('pet:changed', () => {
+      if (this.activeModal === 'pets') this.renderPetsModal();
+    });
 
     bus.on('chest:open', () => this.openChestModal());
     bus.on('tv:open', (payload) => this.openTvModal(payload));
@@ -592,6 +630,7 @@ export class HudController {
     bus.on('ui:openQuests', () => this.openQuests());
     bus.on('ui:openBundles', () => this.openBundles());
     bus.on('ui:openMap', () => this.openMap());
+    bus.on('ui:openPets', () => this.openPets());
     bus.on('ui:openHelp', () => this.openHelp());
   }
 
@@ -1479,6 +1518,235 @@ export class HudController {
   }
 
   /* =========================================================
+     COMPANION CATS ADOPTION & CARE PANEL
+     ========================================================= */
+
+  private renderPetsModal(): void {
+    const pets = this.world.pets;
+    const isRainy = this.world.weather.isRainy();
+    const activeScene = pets.getActiveScene(isRainy, this.world.time.minutes);
+    const locationLabel =
+      activeScene === 'house'
+        ? '农舍小屋（壁炉旁打盹）'
+        : activeScene === 'farm'
+          ? (pets.celebratingOnFarm ? '晨露农场（生日庆典）' : '晨露农场（阳光草坪）')
+          : '等待领养';
+
+    // Top bar: water bowl status + one-click adopt both cats
+    this.petsBowlBarEl.innerHTML = '';
+    const bowlInfo = document.createElement('span');
+    bowlInfo.innerHTML = `💧 农场猫咪水碗：<strong>${
+      pets.bowlFilledToday ? '已装满清水 ✓' : '待添水（用喷壶点击农舍旁水碗）'
+    }</strong>`;
+    this.petsBowlBarEl.appendChild(bowlInfo);
+
+    if (pets.cats.length < CAT_BREED_IDS.length) {
+      const adoptAllBtn = document.createElement('button');
+      adoptAllBtn.type = 'button';
+      adoptAllBtn.className = 'wood-btn primary-btn';
+      adoptAllBtn.textContent =
+        pets.cats.length === 0 ? '🐾 两只猫咪一起接回家（免费）' : '🐾 把另一只猫咪也接回家';
+      adoptAllBtn.addEventListener('click', () => {
+        const draftNames: Partial<Record<CatBreedId, string>> = {};
+        for (const id of CAT_BREED_IDS) {
+          const inp = document.getElementById(`pet-name-input-${id}`) as HTMLInputElement | null;
+          if (inp && inp.value.trim()) draftNames[id] = inp.value.trim();
+        }
+        this.world.adoptAllCats(draftNames);
+      });
+      this.petsBowlBarEl.appendChild(adoptAllBtn);
+    } else {
+      const bothTag = document.createElement('span');
+      bothTag.className = 'v-badge done';
+      bothTag.textContent = `双猫已团聚 · 当前位置：${locationLabel}`;
+      this.petsBowlBarEl.appendChild(bothTag);
+    }
+
+    // Two bespoke cat cards
+    this.petsListEl.innerHTML = '';
+    const inv = this.world.inventory;
+
+    for (const breedId of CAT_BREED_IDS) {
+      const def = getCatBreedDef(breedId);
+      const runtime = pets.getCat(breedId);
+
+      const card = document.createElement('div');
+      card.className = 'villager-card pet-card';
+
+      const img = document.createElement('img');
+      img.className = 'villager-portrait pet-portrait';
+      img.src = this.world.atlas.getIconDataUrl(`portrait_pet_${breedId}`);
+      img.alt = def.name;
+      card.appendChild(img);
+
+      const body = document.createElement('div');
+      body.className = 'villager-body';
+
+      if (!runtime) {
+        // Adoption state
+        const top = document.createElement('div');
+        top.className = 'villager-top';
+        top.innerHTML = `
+          <div>
+            <span class="villager-name">${def.name}</span>
+            <span class="villager-role">${def.personality}</span>
+          </div>
+          <span class="v-badge">${def.originNote}</span>
+        `;
+
+        const bio = document.createElement('p');
+        bio.className = 'villager-bio';
+        bio.textContent = def.description;
+
+        const adoptRow = document.createElement('div');
+        adoptRow.className = 'pet-adopt-row';
+
+        const nameInput = document.createElement('input');
+        nameInput.id = `pet-name-input-${breedId}`;
+        nameInput.type = 'text';
+        nameInput.maxLength = 12;
+        nameInput.value = def.defaultPetName;
+        nameInput.placeholder = '给小猫咪起个名字…';
+        nameInput.className = 'pet-name-input';
+
+        const adoptBtn = document.createElement('button');
+        adoptBtn.type = 'button';
+        adoptBtn.className = 'wood-btn primary-btn';
+        adoptBtn.textContent = '领养回家（免费）';
+        adoptBtn.addEventListener('click', () => {
+          this.world.adoptCat(breedId, nameInput.value);
+        });
+
+        adoptRow.appendChild(nameInput);
+        adoptRow.appendChild(adoptBtn);
+
+        body.appendChild(top);
+        body.appendChild(bio);
+        body.appendChild(adoptRow);
+      } else {
+        // Adopted care & interaction state
+        const hearts = pets.getHearts(runtime);
+        const top = document.createElement('div');
+        top.className = 'villager-top';
+        top.innerHTML = `
+          <div>
+            <span class="villager-name">${runtime.name}</span>
+            <span class="villager-role">${def.name} · ${def.originNote}</span>
+          </div>
+          <div class="hearts-row" title="羁绊好感 ${runtime.friendship} / ${PET_MAX_FRIENDSHIP}">
+            ${renderHeartsHtml(hearts, PET_MAX_HEARTS)}
+          </div>
+        `;
+
+        const bio = document.createElement('p');
+        bio.className = 'villager-bio';
+        bio.textContent = `${def.description}（羁绊 ${runtime.friendship}/${PET_MAX_FRIENDSHIP} · 位置：${locationLabel}）`;
+
+        const badges = document.createElement('div');
+        badges.className = 'villager-badges';
+        badges.innerHTML = `
+          <span class="v-badge${runtime.pettedToday ? ' done' : ''}">${runtime.pettedToday ? '今日已撸猫 ✓' : '今日待抚摸'}</span>
+          <span class="v-badge${pets.bowlFilledToday ? ' done' : ''}">${pets.bowlFilledToday ? '水碗已添水 ✓' : '水碗空着'}</span>
+          <span class="v-badge${runtime.treatGivenToday ? ' done' : ''}">${runtime.treatGivenToday ? '今日已喂零食 ✓' : '今日可喂小鱼/牛奶'}</span>
+          <span class="v-badge">${pets.celebratingOnFarm ? '庆生跟随中' : runtime.followPlayer ? '跟随模式中' : '自由漫步中'}</span>
+          ${runtime.pendingGiftItemId ? '<span class="v-badge done">🎁 嘴里叼着小礼物！去摸摸它</span>' : ''}
+        `;
+
+        // Control buttons: Follow toggle, Call to side, Rename
+        const actionsRow = document.createElement('div');
+        actionsRow.className = 'pet-actions-row';
+
+        const followBtn = document.createElement('button');
+        followBtn.type = 'button';
+        followBtn.className = `wood-btn${runtime.followPlayer ? ' primary-btn' : ''}`;
+        followBtn.textContent = pets.celebratingOnFarm
+          ? (runtime.followPlayer ? '庆生后自由漫步' : '庆生后继续跟随')
+          : (runtime.followPlayer ? '切换为自由漫步' : '开启跟随散步');
+        followBtn.addEventListener('click', () => this.world.toggleCatFollow(breedId));
+
+        const callBtn = document.createElement('button');
+        callBtn.type = 'button';
+        callBtn.className = 'wood-btn';
+        callBtn.textContent = '呼唤到身边';
+        callBtn.addEventListener('click', () => {
+          this.closeModals();
+          this.world.callCatToPlayer(breedId);
+        });
+
+        const renameInput = document.createElement('input');
+        renameInput.type = 'text';
+        renameInput.maxLength = 12;
+        renameInput.value = runtime.name;
+        renameInput.className = 'pet-name-input compact';
+        renameInput.setAttribute('aria-label', '修改猫咪名字');
+
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'wood-btn';
+        renameBtn.textContent = '改名';
+        renameBtn.addEventListener('click', () => {
+          this.world.renameCat(breedId, renameInput.value);
+        });
+
+        actionsRow.appendChild(followBtn);
+        actionsRow.appendChild(callBtn);
+        actionsRow.appendChild(renameInput);
+        actionsRow.appendChild(renameBtn);
+
+        body.appendChild(top);
+        body.appendChild(bio);
+        body.appendChild(badges);
+        body.appendChild(actionsRow);
+
+        // Quick Favorite Treat feeding row
+        const treatRow = document.createElement('div');
+        treatRow.className = 'pet-treat-bar';
+        const treatLabel = document.createElement('span');
+        treatLabel.className = 'dialogue-gift-label';
+        treatLabel.textContent = '投喂最爱零食：';
+        treatRow.appendChild(treatLabel);
+
+        if (runtime.treatGivenToday) {
+          const done = document.createElement('span');
+          done.className = 'shop-item-meta';
+          done.textContent = '今日已吃饱满足啦 ✓';
+          treatRow.appendChild(done);
+        } else {
+          const availableTreats = def.favoriteTreatIds
+            .map((id) => ({ id, def: getItemDef(id), qty: inv.getItemCount(id) }))
+            .filter((x) => x.def && x.qty > 0);
+
+          if (availableTreats.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'shop-item-meta';
+            empty.textContent = '背包暂无小鱼、烤鱼、鲜牛奶或鸡蛋（水塘钓鱼或牧场收获后可喂食）';
+            treatRow.appendChild(empty);
+          } else {
+            for (const t of availableTreats.slice(0, 5)) {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'wood-btn gift-pill-btn';
+              const icon = document.createElement('img');
+              icon.src = this.world.atlas.getIconDataUrl(t.def!.spriteKey);
+              icon.alt = t.def!.name;
+              btn.appendChild(icon);
+              const label = document.createElement('span');
+              label.textContent = `${t.def!.name}(${t.qty})`;
+              btn.appendChild(label);
+              btn.addEventListener('click', () => this.world.feedCatTreat(breedId, t.id));
+              treatRow.appendChild(btn);
+            }
+          }
+        }
+        body.appendChild(treatRow);
+      }
+
+      card.appendChild(body);
+      this.petsListEl.appendChild(card);
+    }
+  }
+
+  /* =========================================================
      INSPECTOR, DAY SUMMARY & HELPERS
      ========================================================= */
 
@@ -1541,6 +1809,15 @@ export class HudController {
       }
       if (payload.animalProductsCount > 0) {
         notes.push(`🐾 牧场小动物今早新产出了 ${payload.animalProductsCount} 份新鲜蛋奶/羊毛！`);
+      }
+      if (payload.petBowlDrank) {
+        notes.push('🐱 小猫咪们喝光了水碗里的清甜泉水，每只羁绊好感 +24！');
+      }
+      for (const line of payload.petGiftLines) {
+        notes.push(`🎁 ${line}`);
+      }
+      for (const name of payload.petMaxHeartNames) {
+        notes.push(`💖 【${name}】已经与你达成 5 ♥ 满心灵魂羁绊！`);
       }
       if (payload.crowEatenCount > 0) {
         notes.push(`🐦 注意：夜间有 ${payload.crowEatenCount} 株无稻草人守护的作物被乌鸦啄食了！`);

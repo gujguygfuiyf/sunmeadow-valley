@@ -136,7 +136,7 @@ export class PlayerSystem {
     return `player_${this.facing}_${frame}`;
   }
 
-  private collidesAt(cx: number, cy: number, collisionGrid: CollisionGrid): boolean {
+  collidesAt(cx: number, cy: number, collisionGrid: CollisionGrid): boolean {
     const left = Math.floor((cx - this.halfW) / TILE_SIZE);
     const right = Math.floor((cx + this.halfW) / TILE_SIZE);
     const top = Math.floor((cy - this.halfH) / TILE_SIZE);

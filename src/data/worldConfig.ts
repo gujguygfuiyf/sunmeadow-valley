@@ -1,5 +1,6 @@
 export const TILE_SIZE = 16;
 export const DEFAULT_CAMERA_ZOOM = 3;
+export const TOWN_ENTRY = { x: 2.2, y: 9.5, facing: 'right' } as const;
 
 export const MAP_COLS = 30;
 export const MAP_ROWS = 22;
@@ -25,6 +26,8 @@ export const FARM_LAYOUT = {
   house: { x: 4, y: 2, w: 5, h: 4 } as RectArea,
   /** Interactive porch door tile in front of the house */
   houseDoor: { x: 6, y: 6 },
+  /** Cozy outdoor pet water bowl beside the farmhouse */
+  petBowl: { x: 9, y: 4, w: 1, h: 1 } as RectArea,
   /** Shipping bin directly east of the farmhouse */
   shippingBin: { x: 10, y: 5, w: 2, h: 1 } as RectArea,
   /** Seed stall on the northeastern path */

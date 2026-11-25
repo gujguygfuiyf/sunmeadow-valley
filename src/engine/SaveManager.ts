@@ -3,6 +3,7 @@ import type { SceneId } from '../data/events';
 import type { WeatherKind } from '../data/fish';
 import type { PlacedFurniture } from '../data/furniture';
 import type { MachineKind, UpgradeableToolKind } from '../data/items';
+import type { CatBreedId } from '../data/pets';
 
 export const SAVE_SCHEMA_VERSION = 3;
 const STORAGE_KEY_V3 = 'sunmeadow_valley_save_v3';
@@ -82,6 +83,22 @@ export interface SerializedFarmNode {
   hp: number;
 }
 
+export interface SerializedCatEntry {
+  breedId: CatBreedId;
+  name: string;
+  friendship: number;
+  pettedToday: boolean;
+  treatGivenToday: boolean;
+  followPlayer: boolean;
+  pendingGiftItemId?: string | null;
+}
+
+export interface SerializedPetState {
+  bowlFilledToday: boolean;
+  celebratingOnFarm?: boolean;
+  cats: SerializedCatEntry[];
+}
+
 export interface GameSaveData {
   version: number;
   savedAt: string;
@@ -121,6 +138,8 @@ export interface GameSaveData {
   unlockedGreenhouse?: boolean;
   unlockedFastTravel?: boolean;
   unlockedMineElevator?: boolean;
+  pets?: SerializedPetState | null;
+  birthdayGiftClaimed?: boolean;
 }
 
 export interface StorageBackend {

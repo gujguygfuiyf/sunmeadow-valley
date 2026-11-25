@@ -10,7 +10,8 @@ import { getFurnitureDef } from '../data/furniture';
 import { getItemDef, type UpgradeableToolKind } from '../data/items';
 import { TOOL_TIERS, UPGRADEABLE_TOOL_NAMES } from '../data/mining';
 import { getRecipeDef } from '../data/recipes';
-import { FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig';
+import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
+import { FARM_LAYOUT, TILE_SIZE, TOWN_ENTRY } from '../data/worldConfig';
 import type { AudioManager } from '../engine/AudioManager';
 import type { EventBus } from '../engine/EventBus';
 import type { InputManager } from '../engine/InputManager';
@@ -26,6 +27,7 @@ import { MachineSystem } from '../systems/MachineSystem';
 import { MineSystem } from '../systems/MineSystem';
 import { NpcSystem } from '../systems/NpcSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
+import { PetSystem, type CompanionCatRuntime } from '../systems/PetSystem';
 import { PlayerStatsSystem } from '../systems/PlayerStatsSystem';
 import { PlayerSystem, type FacingDir } from '../systems/PlayerSystem';
 import { QuestSystem } from '../systems/QuestSystem';
@@ -39,6 +41,12 @@ export const SCENE_LABELS: Record<SceneId, string> = {
   town: '晨露小镇',
   mine: '晨露矿洞',
 };
+
+const BIRTHDAY_GIFT = [
+  { itemId: 'food_berry_toast', quantity: 2 },
+  { itemId: 'crop_tulip', quantity: 3 },
+  { itemId: 'gem_amethyst', quantity: 1 },
+] as const;
 
 export interface GameWorldDeps {
   bus: EventBus<GameEvents>;
@@ -71,6 +79,7 @@ export class GameWorld {
   readonly machines = new MachineSystem();
   readonly fishing = new FishingSystem();
   readonly livestock = new LivestockSystem();
+  readonly pets = new PetSystem();
   readonly mine = new MineSystem();
   readonly quests = new QuestSystem();
   readonly collections = new CollectionSystem();
@@ -83,6 +92,7 @@ export class GameWorld {
 
   decorateMode = false;
   selectedFurnitureId: string | null = null;
+  birthdayGiftClaimed = false;
 
   private sceneSwitcher:
     | ((target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }) => void)
@@ -103,6 +113,7 @@ export class GameWorld {
   }
 
   travelTo(target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }): void {
+    if (target !== 'farm') this.endBirthdayCelebration();
     if (this.decorateMode && target !== 'house') {
       this.setDecorateMode(false);
     }
@@ -370,6 +381,269 @@ export class GameWorld {
     this.saveGameState();
   }
 
+  /* =========================================================
+     COMPANION CATS (ADOPT, PET, TREAT, WATER BOWL, FOLLOW)
+     ========================================================= */
+
+  claimBirthdayGift(): 'claimed' | 'already-claimed' | 'bag-full' | 'save-failed' {
+    if (this.birthdayGiftClaimed) return 'already-claimed';
+    const slots = this.inventory.slotsWithItemsAdded(BIRTHDAY_GIFT);
+    if (!slots) return 'bag-full';
+
+    // Write the entire reward and receipt together before announcing or applying it.
+    const save = this.createSaveData();
+    const cats = new PetSystem();
+    cats.load(save.pets);
+    cats.welcomeBirthdayCats();
+    for (const cat of cats.cats) cat.pettedToday = true;
+    save.pets = cats.serialize();
+    save.inventory = slots;
+    save.discoveredItems = [...new Set([...this.collections.discoveredItems, ...BIRTHDAY_GIFT.map((item) => item.itemId)])];
+    save.birthdayGiftClaimed = true;
+    if (!this.saveManager.save(save)) return 'save-failed';
+
+    this.birthdayGiftClaimed = true;
+    this.inventory.slots.splice(0, this.inventory.slots.length, ...slots);
+    for (const { itemId } of BIRTHDAY_GIFT) this.collections.recordDiscovery(itemId);
+    this.pets.load(save.pets);
+    this.placeCatsForCurrentSchedule();
+    this.bus.emit('inventory:changed', undefined);
+    this.bus.emit('bundles:changed', undefined);
+    this.bus.emit('pet:changed', undefined);
+    return 'claimed';
+  }
+
+  startBirthdayCelebration(): void {
+    if (this.currentSceneId !== 'farm') {
+      this.travelTo('farm', { ...FARM_LAYOUT.spawnTile, facing: 'down' });
+    }
+    this.pets.welcomeBirthdayCats();
+    this.pets.celebratingOnFarm = true;
+    this.placeCatsForCurrentSchedule();
+    this.bus.emit('pet:changed', undefined);
+    this.saveGameState();
+  }
+
+  private endBirthdayCelebration(): void {
+    if (!this.pets.celebratingOnFarm) return;
+    this.pets.celebratingOnFarm = false;
+    this.placeCatsForCurrentSchedule();
+  }
+
+  private placeCatsForCurrentSchedule(): void {
+    if (this.pets.celebratingOnFarm && this.currentSceneId === 'farm') {
+      for (const cat of this.pets.cats) {
+        this.pets.summonNear(cat.breedId, this.player.x, this.player.y);
+      }
+      return;
+    }
+    const scene = this.pets.getActiveScene(this.weather.isRainy(), this.time.minutes);
+    if (scene) this.pets.placeForScene(scene);
+  }
+
+  adoptCat(breedId: CatBreedId, customName?: string): boolean {
+    const cat = this.pets.adopt(breedId, customName);
+    if (!cat) {
+      this.toast('这只小猫咪已经住在农场里啦！');
+      return false;
+    }
+    const def = getCatBreedDef(breedId);
+    this.placeCatsForCurrentSchedule();
+    if (this.weather.isRainy()) {
+      this.pets.bowlFilledToday = true;
+    }
+    this.audio.play('meow');
+    this.particles.spawnHeartBurst(cat.x, cat.y);
+    this.bus.emit('pet:changed', undefined);
+    this.toast(`欢迎【${cat.name}】（${def.name}）来到晨露农场！记得常抚摸它并给水碗添水哦～`);
+    this.saveGameState();
+    return true;
+  }
+
+  adoptAllCats(names?: Partial<Record<CatBreedId, string>>): void {
+    let adopted = 0;
+    for (const breedId of CAT_BREED_IDS) {
+      if (!this.pets.hasBreed(breedId)) {
+        const cat = this.pets.adopt(breedId, names?.[breedId]);
+        if (cat) adopted += 1;
+      }
+    }
+    if (adopted === 0) {
+      this.toast('两只小猫咪都已经安家在晨露农场啦！');
+      return;
+    }
+    this.placeCatsForCurrentSchedule();
+    if (this.weather.isRainy()) {
+      this.pets.bowlFilledToday = true;
+    }
+    this.audio.play('meow');
+    this.bus.emit('pet:changed', undefined);
+    this.toast('太温馨啦！两只小猫咪都已入住晨露农场，快去水碗旁看看它们吧！');
+    this.saveGameState();
+  }
+
+  renameCat(breedId: CatBreedId, newName: string): boolean {
+    if (!this.pets.rename(breedId, newName)) {
+      this.toast('猫咪名字不能为空哦');
+      return false;
+    }
+    const cat = this.pets.getCat(breedId);
+    this.audio.play('ui');
+    this.bus.emit('pet:changed', undefined);
+    this.toast(`已将小猫咪改名为【${cat?.name ?? ''}】！`);
+    this.saveGameState();
+    return true;
+  }
+
+  toggleCatFollow(breedId: CatBreedId): void {
+    const cat = this.pets.getCat(breedId);
+    if (!cat) return;
+    const following = this.pets.toggleFollow(breedId);
+    this.audio.play('meow');
+    this.bus.emit('pet:changed', undefined);
+    this.toast(
+      this.pets.celebratingOnFarm
+        ? `庆生结束后，【${cat.name}】会${following ? '继续跟随你' : '恢复自由漫步'}。`
+        : following
+        ? `【${cat.name}】开启跟随模式，迈着小碎步跟在你身后啦！`
+        : `【${cat.name}】切换为自由漫步模式，在院子里晒太阳打盹啦！`
+    );
+    this.saveGameState();
+  }
+
+  callCatToPlayer(breedId: CatBreedId): void {
+    const cat = this.pets.getCat(breedId);
+    if (!cat) return;
+    if (!this.pets.isInScene(this.currentSceneId, this.weather.isRainy(), this.time.minutes)) {
+      const where = this.pets.getActiveScene(this.weather.isRainy(), this.time.minutes);
+      this.toast(
+        where === 'house'
+          ? `现在下雨或天色已晚，【${cat.name}】正在农舍小屋壁炉旁等你哦！`
+          : `【${cat.name}】正在晨露农场阳光下玩耍，回农场就能呼唤它！`
+      );
+      return;
+    }
+    this.pets.summonNear(breedId, this.player.x, this.player.y);
+    this.audio.play('meow');
+    this.particles.spawnHeartBurst(cat.x, cat.y);
+    this.particles.spawnFloatingText(cat.x, cat.y - 12, getCatBreedDef(breedId).soundText, '#ffd4e5');
+    this.toast(`你呼唤了一声，【${cat.name}】立刻屁颠屁颠跑到了身边！`);
+  }
+
+  interactWithCat(cat: CompanionCatRuntime): void {
+    // If already petted today & holding a favorite treat item, offer it directly!
+    const held = this.inventory.getSelectedItemDef();
+    if (
+      cat.pettedToday &&
+      !cat.pendingGiftItemId &&
+      !cat.treatGivenToday &&
+      held &&
+      this.pets.isFavoriteTreat(cat.breedId, held.id)
+    ) {
+      this.feedCatTreat(cat.breedId, held.id);
+      return;
+    }
+
+    const res = this.pets.petInteract(cat);
+    this.audio.play('meow');
+    this.particles.spawnHeartBurst(cat.x, cat.y);
+
+    if (res.claimedGiftItemId) {
+      if (this.inventory.canAddItem(res.claimedGiftItemId, 1)) {
+        this.inventory.addItem(res.claimedGiftItemId, 1);
+        this.collections.recordDiscovery(res.claimedGiftItemId);
+        const itemName = getItemDef(res.claimedGiftItemId)?.name ?? '小礼物';
+        this.audio.play('harvest');
+        this.particles.spawnHarvestSparkle(cat.x, cat.y);
+        this.particles.spawnFloatingText(cat.x, cat.y - 14, `🎁 +1 ${itemName}`, '#ffe570');
+        this.bus.emit('inventory:changed', undefined);
+        this.bus.emit('bundles:changed', undefined);
+        this.toast(`【${cat.name}】蹭了蹭你，把清晨叼回来的【${itemName}】送给了你！`);
+      } else {
+        cat.pendingGiftItemId = res.claimedGiftItemId;
+        this.toast(`【${cat.name}】嘴里叼着礼物想送你，但背包满啦，先腾个空位吧！`);
+      }
+    } else if (res.pettedNow) {
+      const hearts = this.pets.getHearts(cat);
+      this.particles.spawnFloatingText(cat.x, cat.y - 14, `♥ ${res.soundText}`, '#ff9bb8');
+      if (res.reachedNewHeart) {
+        this.audio.play('bundle');
+        this.toast(`★ 好感升级！【${cat.name}】对你的羁绊达到 ${hearts} 颗心啦！`);
+      } else {
+        this.toast(`温柔撸了撸【${cat.name}】（${res.soundText}），好感度 +${res.gainedPoints}！`);
+      }
+    } else {
+      this.particles.spawnFloatingText(cat.x, cat.y - 14, res.soundText, '#fff4cc');
+    }
+
+    this.bus.emit('pet:changed', undefined);
+    this.saveGameState();
+  }
+
+  feedCatTreat(breedId: CatBreedId, itemId: string): boolean {
+    const cat = this.pets.getCat(breedId);
+    if (!cat) return false;
+    if (this.inventory.getItemCount(itemId) < 1) {
+      this.toast('背包里没有这项小零食啦！');
+      return false;
+    }
+
+    const res = this.pets.giveTreat(breedId, itemId);
+    if (!res.ok) {
+      this.toast(res.reason ?? '暂时无法喂食');
+      return false;
+    }
+
+    this.inventory.removeItem(itemId, 1);
+    const itemName = getItemDef(itemId)?.name ?? '零食';
+    this.audio.play('meow');
+    this.particles.spawnHeartBurst(cat.x, cat.y);
+    this.particles.spawnFloatingText(cat.x, cat.y - 14, `♥ 好感 +${res.gainedPoints}`, '#ff8db3');
+    this.bus.emit('inventory:changed', undefined);
+    this.bus.emit('pet:changed', undefined);
+
+    if (res.reachedNewHeart) {
+      this.audio.play('bundle');
+      this.toast(
+        `★ 投喂【${itemName}】大成功！【${cat.name}】开心地转圈圈，羁绊升至 ${this.pets.getHearts(cat)} 颗心！`
+      );
+    } else {
+      this.toast(`给【${cat.name}】喂了【${itemName}】，它大口吃光，好感 +${res.gainedPoints}！`);
+    }
+    this.saveGameState();
+    return true;
+  }
+
+  waterPetBowl(): boolean {
+    if (!this.pets.hasAnyCat()) {
+      this.audio.play('ui');
+      this.bus.emit('ui:openPets', undefined);
+      this.toast('这是空着的猫咪水碗！先挑一只或两只小猫咪领养回家吧～');
+      return false;
+    }
+    if (this.pets.bowlFilledToday) {
+      this.toast('猫咪水碗已经是满满的清甜泉水啦！');
+      return false;
+    }
+    if (this.inventory.waterLevel <= 0) {
+      this.toast('喷壶没水啦！先去水塘装满水再来给猫咪水碗添水吧');
+      return false;
+    }
+
+    this.inventory.consumeWater(1);
+    this.pets.fillWaterBowl();
+    const wx = (FARM_LAYOUT.petBowl.x + 0.5) * TILE_SIZE;
+    const wy = (FARM_LAYOUT.petBowl.y + 0.5) * TILE_SIZE;
+    this.audio.play('water');
+    this.particles.spawnWaterSplash(wx, wy);
+    this.particles.spawnFloatingText(wx, wy - 8, '💧 水碗已添满!', '#8ee2ff');
+    this.bus.emit('inventory:changed', undefined);
+    this.bus.emit('pet:changed', undefined);
+    this.toast('已为猫咪水碗倒满清水！明天清晨小猫咪们喝完会大幅提升好感度～');
+    this.saveGameState();
+    return true;
+  }
+
   buySeed(itemId: string, quantity = 1): void {
     const result = this.inventory.buyItem(itemId, quantity);
     if (!result.ok) {
@@ -615,6 +889,7 @@ export class GameWorld {
 
   triggerSleep(): void {
     if (this.sleepingTransition) return;
+    this.endBirthdayCelebration();
     this.sleepingTransition = true;
     this.setDecorateMode(false);
     this.activeDialogueNpcId = null;
@@ -655,9 +930,14 @@ export class GameWorld {
       this.tileMap.waterTile(x, y)
     );
 
-    // Complete overnight artisan machines & animal production
+    // Complete overnight artisan machines, animal production & companion cats
     this.machines.advanceOvernight();
     const animalProductsCount = this.livestock.advanceDay();
+    const petReport = this.pets.advanceDay(this.weather.isRainy());
+    const petGiftLines = petReport.broughtGifts.map((g) => {
+      const itemName = getItemDef(g.itemId)?.name ?? '神秘礼物';
+      return `${g.catName}清晨叼回了一件【${itemName}】，去摸摸它领取吧！`;
+    });
 
     // Restore full stamina & HP, refresh daily NPC & Notice Board quest flags
     this.stats.restOvernight();
@@ -692,6 +972,9 @@ export class GameWorld {
       sprinklerWateredCount,
       rainAutoWatered,
       animalProductsCount,
+      petBowlDrank: petReport.drankFromBowl,
+      petGiftLines,
+      petMaxHeartNames: petReport.maxHeartNames,
       festivalToday: this.time.getTodayFestival(),
     });
   }
@@ -714,6 +997,7 @@ export class GameWorld {
 
   resetFarm(): void {
     this.saveManager.clear();
+    this.birthdayGiftClaimed = false;
     this.tileMap.resetToDefault();
     this.crops.clear();
     this.inventory.resetToStarter();
@@ -723,6 +1007,7 @@ export class GameWorld {
     this.house.resetToStarter();
     this.machines.clear();
     this.livestock.reset();
+    this.pets.reset();
     this.mine.deepestFloor = 1;
     this.quests.rollDailyQuest(1, 'spring');
     this.collections.reset();
@@ -741,13 +1026,17 @@ export class GameWorld {
   }
 
   saveGameState(): void {
+    this.saveManager.save(this.createSaveData());
+  }
+
+  private createSaveData(): GameSaveData {
     const inv = this.inventory.serialize();
     const houseData = this.house.serialize();
     const statsData = this.stats.serialize();
     const liveData = this.livestock.serialize();
     const colData = this.collections.serialize();
 
-    const data: GameSaveData = {
+    return {
       version: SAVE_SCHEMA_VERSION,
       savedAt: new Date().toISOString(),
       currentSceneId: this.currentSceneId === 'mine' ? 'farm' : this.currentSceneId,
@@ -784,13 +1073,15 @@ export class GameWorld {
       unlockedGreenhouse: colData.unlockedGreenhouse,
       unlockedFastTravel: colData.unlockedFastTravel,
       unlockedMineElevator: colData.unlockedMineElevator,
+      pets: this.pets.serialize(),
+      birthdayGiftClaimed: this.birthdayGiftClaimed,
     };
-    this.saveManager.save(data);
   }
 
   loadGameState(): boolean {
     const saved = this.saveManager.load();
     if (!saved) return false;
+    this.birthdayGiftClaimed = saved.birthdayGiftClaimed === true;
 
     this.time.load(saved.day, saved.season, saved.timeMinutes);
     this.audio.setSeason(this.time.seasonId);
@@ -819,6 +1110,7 @@ export class GameWorld {
     for (const b of this.livestock.builtBuildings) {
       this.tileMap.setBuildingBuilt(b, true);
     }
+    this.pets.load(saved.pets);
 
     this.crops.load(saved.crops);
     this.machines.load(saved.machines);
@@ -843,7 +1135,15 @@ export class GameWorld {
         : 'farm';
     this.currentSceneId = targetScene;
 
-    if (typeof saved.playerX === 'number' && typeof saved.playerY === 'number') {
+    if (targetScene === 'town') {
+      if (Number.isFinite(saved.playerX) && Number.isFinite(saved.playerY)) {
+        // TownScene.enter validates the restored footprint against the live town grid.
+        this.player.x = saved.playerX;
+        this.player.y = saved.playerY;
+      } else {
+        this.player.setPositionTile(TOWN_ENTRY.x, TOWN_ENTRY.y, TOWN_ENTRY.facing);
+      }
+    } else if (Number.isFinite(saved.playerX) && Number.isFinite(saved.playerY)) {
       const tx = Math.floor(saved.playerX / TILE_SIZE);
       const ty = Math.floor(saved.playerY / TILE_SIZE);
       if (targetScene === 'farm' && !this.tileMap.isSolid(tx, ty)) {
@@ -857,6 +1157,8 @@ export class GameWorld {
       }
     }
 
+    if (targetScene !== 'farm') this.pets.celebratingOnFarm = false;
+    this.placeCatsForCurrentSchedule();
     return true;
   }
 
@@ -909,6 +1211,7 @@ export class GameWorld {
     this.bus.emit('quests:changed', undefined);
     this.bus.emit('bundles:changed', undefined);
     this.bus.emit('livestock:changed', undefined);
+    this.bus.emit('pet:changed', undefined);
   }
 
   toast(message: string): void {

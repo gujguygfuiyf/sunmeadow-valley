@@ -157,33 +157,46 @@ export class InventorySystem {
   }
 
   addItem(itemId: string, quantity = 1): boolean {
+    return this.addToSlots(this.slots, itemId, quantity) > 0;
+  }
+
+  /** Plans a whole delivery, including space shared by different items. */
+  slotsWithItemsAdded(items: readonly InventorySlot[]): (InventorySlot | null)[] | null {
+    const slots = this.slots.map((slot) => slot && { ...slot });
+    for (const { itemId, quantity } of items) {
+      if (this.addToSlots(slots, itemId, quantity) !== quantity) return null;
+    }
+    return slots;
+  }
+
+  private addToSlots(slots: (InventorySlot | null)[], itemId: string, quantity: number): number {
     const def = getItemDef(itemId);
-    if (!def || quantity <= 0) return false;
+    if (!def || quantity <= 0) return 0;
 
     let remaining = quantity;
 
     if (def.stackable) {
-      for (const slot of this.slots) {
+      for (const slot of slots) {
         if (slot && slot.itemId === itemId && slot.quantity < def.maxStack) {
           const room = def.maxStack - slot.quantity;
           const add = Math.min(room, remaining);
           slot.quantity += add;
           remaining -= add;
-          if (remaining === 0) return true;
+          if (remaining === 0) return quantity;
         }
       }
     }
 
-    for (let i = 0; i < this.slots.length; i++) {
-      if (this.slots[i] === null) {
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i] === null) {
         const add = def.stackable ? Math.min(def.maxStack, remaining) : 1;
-        this.slots[i] = { itemId, quantity: add };
+        slots[i] = { itemId, quantity: add };
         remaining -= add;
-        if (remaining === 0) return true;
+        if (remaining === 0) return quantity;
       }
     }
 
-    return remaining < quantity;
+    return quantity - remaining;
   }
 
   removeFromSlot(slotIndex: number, quantity = 1): boolean {

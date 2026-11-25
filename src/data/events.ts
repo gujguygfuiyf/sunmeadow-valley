@@ -24,6 +24,9 @@ export interface DaySummaryPayload {
   sprinklerWateredCount: number;
   rainAutoWatered: boolean;
   animalProductsCount: number;
+  petBowlDrank: boolean;
+  petGiftLines: string[];
+  petMaxHeartNames: string[];
   festivalToday: string | null;
 }
 
@@ -78,6 +81,7 @@ export type GameEvents = {
   'quests:changed': void;
   'bundles:changed': void;
   'livestock:changed': void;
+  'pet:changed': void;
   'mine:changed': { floor: number; deepestFloor: number; slimesRemaining: number };
   'fishing:stateChanged': { active: boolean };
   'chest:open': { machineUid: string };
@@ -97,5 +101,6 @@ export type GameEvents = {
   'ui:openQuests': void;
   'ui:openBundles': void;
   'ui:openMap': void;
+  'ui:openPets': void;
   'ui:openHelp': void;
 };

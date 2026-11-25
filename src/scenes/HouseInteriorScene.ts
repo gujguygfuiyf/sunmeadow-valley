@@ -4,6 +4,7 @@ import { DEFAULT_CAMERA_ZOOM, FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig
 import { Camera } from '../engine/Camera';
 import { HOUSE_FIXTURES } from '../systems/HouseInteriorSystem';
 import type { Scene } from './SceneManager';
+import { drawCat, pickCat } from './CompanionCatSprite';
 
 interface Renderable {
   sortY: number;
@@ -40,6 +41,18 @@ export class HouseInteriorScene implements Scene {
   enter(): void {
     this.exitCooldown = 0.55;
     this.lastContextPrompt = null;
+    if (
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const maxW = this.world.house.worldWidth - TILE_SIZE;
+      const maxH = this.world.house.worldHeight - TILE_SIZE;
+      for (const cat of this.world.pets.cats) {
+        if (cat.x < TILE_SIZE || cat.y < TILE_SIZE * 2 || cat.x > maxW || cat.y > maxH) {
+          this.world.pets.placeForScene('house');
+          break;
+        }
+      }
+    }
     this.camera.snapTo(this.world.house.worldWidth / 2, this.world.house.worldHeight / 2);
   }
 
@@ -74,6 +87,17 @@ export class HouseInteriorScene implements Scene {
     }
 
     this.world.advanceClock(dt);
+    if (
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      this.world.pets.update(
+        dt,
+        'house',
+        this.world.player.x,
+        this.world.player.y,
+        this.world.house
+      );
+    }
     this.world.particles.update(dt);
 
     if (this.world.input.pointer.isInsideCanvas) {
@@ -103,6 +127,19 @@ export class HouseInteriorScene implements Scene {
     if (this.world.decorateMode) {
       this.tryPlaceSelectedFurniture(tx, ty);
       return;
+    }
+
+    if (
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const clickedCat = pickCat(this.world, wp.x, wp.y);
+      if (clickedCat) {
+        const d = Math.hypot(clickedCat.x - this.world.player.x, clickedCat.y - this.world.player.y);
+        if (d <= 44) {
+          this.world.interactWithCat(clickedCat);
+          return;
+        }
+      }
     }
 
     if (this.world.house.isTvZone(tx, ty)) {
@@ -172,6 +209,17 @@ export class HouseInteriorScene implements Scene {
 
   handleInteractKey(): void {
     if (this.world.sleepingTransition) return;
+
+    if (
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const nearCat = this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26);
+      if (nearCat) {
+        this.world.interactWithCat(nearCat);
+        return;
+      }
+    }
+
     const px = this.world.player.tileX;
     const py = this.world.player.tileY;
 
@@ -249,8 +297,21 @@ export class HouseInteriorScene implements Scene {
     const py = this.world.player.tileY;
     let prompt: string | null = null;
 
+    const nearCat = this.world.pets.isInScene(
+      'house',
+      this.world.weather.isRainy(),
+      this.world.time.minutes
+    )
+      ? this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26)
+      : null;
+
     if (this.world.decorateMode) {
       prompt = '装修模式已开启：左键摆放选中家具 · 右键收回地板上的家具 · 按 F 退出装修';
+    } else if (nearCat) {
+      const hearts = this.world.pets.getHearts(nearCat);
+      prompt = nearCat.pendingGiftItemId
+        ? `按 E 抚摸【${nearCat.name}】并领取清晨小礼物！`
+        : `按 E 抚摸壁炉旁的【${nearCat.name}】（♥ ${hearts}/5 · 按 P 打开猫咪面板）`;
     } else if (this.world.house.isTvZone(px, py)) {
       prompt = '按 E 或点击复古电视：收看【明日天气预报】与【农耕小贴士】';
     } else if (this.world.house.isKitchenZone(px, py)) {
@@ -422,6 +483,20 @@ export class HouseInteriorScene implements Scene {
           }
         },
       });
+    }
+
+    // Companion Cats (curled up warmly indoors on rainy days or after 19:00!)
+    if (
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      for (const cat of this.world.pets.cats) {
+        const sprite = this.world.atlas.get(this.world.pets.getSpriteKey(cat));
+        if (!sprite) continue;
+        renderables.push({
+          sortY: cat.y + 4,
+          draw: (c) => drawCat(c, sprite, cat, this.elapsedTime),
+        });
+      }
     }
 
     renderables.push({

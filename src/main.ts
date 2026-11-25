@@ -7,6 +7,7 @@ import { EventBus } from './engine/EventBus';
 import { GameLoop } from './engine/GameLoop';
 import { InputManager } from './engine/InputManager';
 import { SaveManager } from './engine/SaveManager';
+import { loadRealCatSpriteAssets } from './engine/PixelArtPets';
 import { SpriteAtlas } from './engine/SpriteAtlas';
 import { FarmScene } from './scenes/FarmScene';
 import { HouseInteriorScene } from './scenes/HouseInteriorScene';
@@ -85,6 +86,12 @@ function bootstrap(): void {
       } else if (code === 'KeyM') {
         audio.play('ui');
         hud.openMap();
+      } else if (code === 'KeyP') {
+        audio.play('ui');
+        hud.openPets();
+      } else if (code === 'KeyL') {
+        audio.play('ui');
+        hud.openBirthday();
       } else if (code === 'KeyH') {
         audio.play('ui');
         hud.openHelp();
@@ -140,10 +147,21 @@ function bootstrap(): void {
   sceneManager.switchTo(world.currentSceneId);
   world.emitAllHudSync();
 
+  // Hot-swap in the real-photo-derived high-fidelity pixel portraits & sprites for both cats
+  void loadRealCatSpriteAssets(atlas).then(() => {
+    bus.emit('pet:changed', undefined);
+  });
+
   if (loaded) {
     world.toast(`欢迎回到晨露谷！已读取${world.time.season}第 ${world.time.day} 天存档`);
   } else {
     world.toast('欢迎来到晨露谷！种田、钓鱼、砍树挖矿、造机器、养动物、探索小镇尽情体验！');
+  }
+
+  // Support direct romantic link (#1203 / #birthday / ?yiyi) to open Yiyi's 12.03 Birthday Screen immediately!
+  const urlTag = `${window.location.hash} ${window.location.search}`.toLowerCase();
+  if (urlTag.includes('1203') || urlTag.includes('birthday') || urlTag.includes('yiyi')) {
+    hud.openBirthday();
   }
 
   const loop = new GameLoop({
@@ -153,6 +171,7 @@ function bootstrap(): void {
       }
     },
     render: () => {
+      if (hud.isBirthdayOpen()) return;
       sceneManager.render(ctx, viewportWidth, viewportHeight);
       hud.renderFrameHud();
     },

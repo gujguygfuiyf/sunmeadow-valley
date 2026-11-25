@@ -3,12 +3,13 @@ import { ANIMAL_CATALOG } from '../data/animals';
 import { getCropDef } from '../data/crops';
 import type { TileInspectPayload } from '../data/events';
 import { getItemDef } from '../data/items';
-import { DEFAULT_CAMERA_ZOOM, FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig';
+import { DEFAULT_CAMERA_ZOOM, FARM_LAYOUT, TILE_SIZE, TOWN_ENTRY } from '../data/worldConfig';
 import { Camera } from '../engine/Camera';
 import { HOUSE_FIXTURES } from '../systems/HouseInteriorSystem';
 import type { CollisionGrid } from '../systems/PlayerSystem';
 import type { InteractiveZoneKind } from '../systems/TileMapSystem';
 import type { Scene } from './SceneManager';
+import { drawCat, pickCat } from './CompanionCatSprite';
 
 interface RenderableObject {
   sortY: number;
@@ -52,6 +53,16 @@ export class FarmScene implements Scene {
     this.portalCooldown = 0.45;
     this.lastContextPrompt = null;
     this.lastInspectKey = '';
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      for (const cat of this.world.pets.cats) {
+        if (cat.x < TILE_SIZE || cat.y < TILE_SIZE || cat.x > this.world.tileMap.worldWidth - TILE_SIZE) {
+          this.world.pets.placeForScene('farm');
+          break;
+        }
+      }
+    }
     this.camera.snapTo(this.world.player.x, this.world.player.y - 6);
   }
 
@@ -95,7 +106,7 @@ export class FarmScene implements Scene {
       this.world.player.tileY <= 8
     ) {
       this.world.audio.play('ui');
-      this.world.travelTo('town', { x: 2.2, y: 9.5, facing: 'right' });
+      this.world.travelTo('town', TOWN_ENTRY);
       return;
     }
 
@@ -114,6 +125,17 @@ export class FarmScene implements Scene {
 
     this.world.advanceClock(dt);
     this.world.livestock.update(dt);
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      this.world.pets.update(
+        dt,
+        'farm',
+        this.world.player.x,
+        this.world.player.y,
+        this.farmCollision
+      );
+    }
     this.world.particles.update(dt);
     this.world.weather.update(
       dt,
@@ -145,6 +167,20 @@ export class FarmScene implements Scene {
   handlePrimaryClick(screenX: number, screenY: number): void {
     if (this.world.sleepingTransition || this.world.fishing.isActive()) return;
     const worldPos = this.camera.screenToWorld(screenX, screenY);
+
+    // 0. Clicking a nearby companion cat pets / collects morning gift / feeds treat
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const clickedCat = pickCat(this.world, worldPos.x, worldPos.y);
+      if (clickedCat) {
+        const d = Math.hypot(clickedCat.x - this.world.player.x, clickedCat.y - this.world.player.y);
+        if (d <= 44) {
+          this.world.interactWithCat(clickedCat);
+          return;
+        }
+      }
+    }
 
     // 1. Clicking a nearby farm animal pets / collects product
     const clickedAnimal = this.world.livestock.findNearbyAnimal(worldPos.x, worldPos.y, 16);
@@ -194,6 +230,19 @@ export class FarmScene implements Scene {
   handleSecondaryClick(screenX: number, screenY: number): void {
     if (this.world.sleepingTransition || this.world.fishing.isActive()) return;
     const worldPos = this.camera.screenToWorld(screenX, screenY);
+
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const clickedCat = pickCat(this.world, worldPos.x, worldPos.y);
+      if (clickedCat) {
+        const d = Math.hypot(clickedCat.x - this.world.player.x, clickedCat.y - this.world.player.y);
+        if (d <= 44) {
+          this.world.interactWithCat(clickedCat);
+          return;
+        }
+      }
+    }
 
     const clickedAnimal = this.world.livestock.findNearbyAnimal(worldPos.x, worldPos.y, 16);
     if (clickedAnimal) {
@@ -253,6 +302,17 @@ export class FarmScene implements Scene {
 
   handleInteractKey(): void {
     if (this.world.sleepingTransition || this.world.fishing.isActive()) return;
+
+    // 0. Nearby companion cat
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      const nearCat = this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26);
+      if (nearCat) {
+        this.world.interactWithCat(nearCat);
+        return;
+      }
+    }
 
     // 1. Nearby farm animal
     const nearAnimal = this.world.livestock.findNearbyAnimal(
@@ -348,6 +408,11 @@ export class FarmScene implements Scene {
 
     // 2. Watering Can (AoE scaled by upgrade tier!)
     if (selectedDef.toolKind === 'watering_can') {
+      if (this.world.tileMap.getInteractiveZoneAt(tx, ty) === 'pet_bowl') {
+        this.world.player.triggerToolSwing();
+        this.world.waterPetBowl();
+        return;
+      }
       if (this.world.tileMap.getInteractiveZoneAt(tx, ty) === 'pond') {
         this.world.player.triggerToolSwing();
         this.refillWateringCan(wx, wy);
@@ -663,9 +728,17 @@ export class FarmScene implements Scene {
           facing: 'up',
         });
         break;
+      case 'pet_bowl': {
+        const held = this.world.inventory.getSelectedItemDef();
+        if (held?.toolKind === 'watering_can') {
+          this.world.player.triggerToolSwing();
+        }
+        this.world.waterPetBowl();
+        break;
+      }
       case 'town_exit':
         this.world.audio.play('ui');
-        this.world.travelTo('town', { x: 2.2, y: 9.5, facing: 'right' });
+        this.world.travelTo('town', TOWN_ENTRY);
         break;
       case 'mine_exit':
         this.world.audio.play('ui');
@@ -737,6 +810,13 @@ export class FarmScene implements Scene {
           Math.abs(px - FARM_LAYOUT.houseDoor.x) <= 2 &&
           Math.abs(py - FARM_LAYOUT.houseDoor.y) <= 2
         );
+      case 'pet_bowl':
+        return checkRect(
+          FARM_LAYOUT.petBowl.x,
+          FARM_LAYOUT.petBowl.y,
+          FARM_LAYOUT.petBowl.w,
+          FARM_LAYOUT.petBowl.h
+        );
       case 'town_exit':
         return px >= this.world.tileMap.cols - 4 && py >= 5 && py <= 9;
       case 'mine_exit':
@@ -780,12 +860,36 @@ export class FarmScene implements Scene {
   private refreshContextPrompt(): void {
     let prompt: string | null = null;
 
-    const nearAnimal = this.world.livestock.findNearbyAnimal(
-      this.world.player.x,
-      this.world.player.y,
-      26
+    const catsOnFarm = this.world.pets.isInScene(
+      'farm',
+      this.world.weather.isRainy(),
+      this.world.time.minutes
     );
-    if (nearAnimal) {
+    const nearCat = catsOnFarm
+      ? this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26)
+      : null;
+
+    const nearAnimal = !nearCat
+      ? this.world.livestock.findNearbyAnimal(this.world.player.x, this.world.player.y, 26)
+      : null;
+
+    if (nearCat) {
+      const hearts = this.world.pets.getHearts(nearCat);
+      const held = this.world.inventory.getSelectedItemDef();
+      if (nearCat.pendingGiftItemId) {
+        prompt = `按 E 抚摸【${nearCat.name}】并领取它清晨叼回的小礼物！`;
+      } else if (!nearCat.pettedToday) {
+        prompt = `按 E 抚摸【${nearCat.name}】（♥ ${hearts}/5 · 今日可撸猫）`;
+      } else if (
+        !nearCat.treatGivenToday &&
+        held &&
+        this.world.pets.isFavoriteTreat(nearCat.breedId, held.id)
+      ) {
+        prompt = `按 E 给【${nearCat.name}】投喂【${held.name}】（好感 +20）`;
+      } else {
+        prompt = `按 E 蹭蹭【${nearCat.name}】（♥ ${hearts}/5 · 按 P 打开猫咪面板）`;
+      }
+    } else if (nearAnimal) {
       const def = ANIMAL_CATALOG[nearAnimal.kind];
       prompt = nearAnimal.hasProductReady
         ? `按 E 抚摸【${nearAnimal.name}】并收获${def.name}产物！`
@@ -809,6 +913,14 @@ export class FarmScene implements Scene {
         );
         if (nearbyZone === 'house_door') {
           prompt = '按 E 进入农舍小屋（电视天气预报 / 厨房烹饪 / 自由装修 / 休息）';
+        } else if (nearbyZone === 'pet_bowl') {
+          if (!this.world.pets.hasAnyCat()) {
+            prompt = '猫咪水碗：按 E 或点击领养你的两只专属小猫咪！(按 P)';
+          } else if (this.world.pets.bowlFilledToday) {
+            prompt = '猫咪水碗：已装满清甜泉水 ✓（明早双猫好感 +24）';
+          } else {
+            prompt = '猫咪水碗：按 E 或用喷壶添水（明早提升小猫咪好感度）';
+          }
         } else if (nearbyZone === 'town_exit') {
           prompt = '继续向东走或按 E：前往晨露小镇（村民 / 铁匠铺 / 木工坊 / 社区中心）';
         } else if (nearbyZone === 'mine_exit') {
@@ -1041,6 +1153,26 @@ export class FarmScene implements Scene {
       });
     }
 
+    // Outdoor Pet Water Bowl beside the farmhouse
+    const bowlSprite = this.world.atlas.get(
+      this.world.pets.bowlFilledToday ? 'pet_bowl_full' : 'pet_bowl_empty'
+    );
+    if (bowlSprite) {
+      renderables.push({
+        sortY: (FARM_LAYOUT.petBowl.y + FARM_LAYOUT.petBowl.h) * TILE_SIZE,
+        draw: (c) => {
+          const bx = FARM_LAYOUT.petBowl.x * TILE_SIZE;
+          const by = FARM_LAYOUT.petBowl.y * TILE_SIZE;
+          c.drawImage(bowlSprite, bx, by);
+          if (this.world.pets.bowlFilledToday && Math.sin(this.elapsedTime * 4) > 0.35) {
+            c.fillStyle = '#ffffff';
+            c.fillRect(bx + 6, by + 6, 1, 1);
+            c.fillRect(bx + 10, by + 8, 1, 1);
+          }
+        },
+      });
+    }
+
     const stallSprite = this.world.atlas.get('seed_stall');
     if (stallSprite) {
       renderables.push({
@@ -1172,6 +1304,20 @@ export class FarmScene implements Scene {
       });
     }
 
+    // Companion Cats (sunny/breezy daytime on Farm!)
+    if (
+      this.world.pets.isInScene('farm', this.world.weather.isRainy(), this.world.time.minutes)
+    ) {
+      for (const cat of this.world.pets.cats) {
+        const sprite = this.world.atlas.get(this.world.pets.getSpriteKey(cat));
+        if (!sprite) continue;
+        renderables.push({
+          sortY: cat.y + 4,
+          draw: (c) => drawCat(c, sprite, cat, this.elapsedTime),
+        });
+      }
+    }
+
     // Player Character
     renderables.push({
       sortY: this.world.player.y + 4,
@@ -1187,6 +1333,11 @@ export class FarmScene implements Scene {
     // Outdoor Weather Layer
     this.world.weather.renderOutdoor(ctx, viewportWidth, viewportHeight, seasonId);
 
+    // Optional Yiyi 12.03 Romantic Sakura & Rose Petal Shower on Farm!
+    if (this.world.pets.celebratingOnFarm) {
+      this.renderBirthdayPetalShower(ctx, viewportWidth, viewportHeight);
+    }
+
     // Ambient Daylight / Dusk Tint
     const light = this.world.time.getAmbientLight();
     if (light.alpha > 0.005) {
@@ -1199,6 +1350,40 @@ export class FarmScene implements Scene {
 
     this.renderFarmSignLabels(ctx, camX, camY, zoom);
     this.world.particles.renderFloatingTexts(ctx, camX, camY, zoom);
+  }
+
+  private renderBirthdayPetalShower(
+    ctx: CanvasRenderingContext2D,
+    viewportWidth: number,
+    viewportHeight: number
+  ): void {
+    ctx.save();
+    const petalColors = [
+      'rgba(255, 176, 205, 0.82)',
+      'rgba(255, 214, 228, 0.78)',
+      'rgba(255, 228, 178, 0.72)',
+    ];
+    for (let i = 0; i < 34; i++) {
+      const seed = i * 97.31;
+      const speedY = 24 + (i % 5) * 6;
+      const x =
+        ((seed * 19 + viewportWidth * 2 - this.elapsedTime * (14 + (i % 4) * 4)) %
+          (viewportWidth + 40)) -
+        20 +
+        Math.sin(this.elapsedTime * 1.8 + i) * 14;
+      const y = ((seed * 13 + this.elapsedTime * speedY) % (viewportHeight + 30)) - 15;
+      const rot = this.elapsedTime * (1.2 + (i % 3) * 0.4) + i;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.fillStyle = petalColors[i % petalColors.length];
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4.5, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   private renderFarmSignLabels(
@@ -1221,6 +1406,14 @@ export class FarmScene implements Scene {
     };
 
     label((FARM_LAYOUT.mineTrail.x + 1.5) * TILE_SIZE, 2.2 * TILE_SIZE, '▲ 晨露矿洞', '#d6d0ff');
+    if (this.world.pets.celebratingOnFarm) {
+      label(
+        (FARM_LAYOUT.house.x + 2.5) * TILE_SIZE,
+        FARM_LAYOUT.house.y * TILE_SIZE - 10,
+        '✨ ♥ 12.03 依依生日快乐 ♥ ✨',
+        '#ffc2da'
+      );
+    }
     label(
       (FARM_LAYOUT.greenhouse.x + 2.5) * TILE_SIZE,
       FARM_LAYOUT.greenhouse.y * TILE_SIZE - 2,

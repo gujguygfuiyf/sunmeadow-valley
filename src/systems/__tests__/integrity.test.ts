@@ -9,6 +9,7 @@ import { FURNITURE_CATALOG } from '../../data/furniture';
 import { ITEM_CATALOG } from '../../data/items';
 import { MINE_ROCK_DEFS, TOOL_TIERS } from '../../data/mining';
 import { NPC_CATALOG } from '../../data/npcs';
+import { CAT_BREEDS } from '../../data/pets';
 import { COOKING_RECIPES } from '../../data/recipes';
 import { STARTER_INVENTORY } from '../../data/worldConfig';
 import { parseTiledMapJson, type TiledMapJson } from '../../engine/TiledMapLoader';
@@ -44,6 +45,14 @@ describe('Data Catalog Referential Integrity Audit', () => {
     }
     for (const animal of Object.values(ANIMAL_CATALOG)) {
       expect(ITEM_CATALOG[animal.produceItemId]).toBeDefined();
+    }
+    for (const cat of Object.values(CAT_BREEDS)) {
+      for (const treatId of cat.favoriteTreatIds) {
+        expect(ITEM_CATALOG[treatId], `Missing cat treat ${treatId}`).toBeDefined();
+      }
+      for (const giftId of cat.luckyGiftPool) {
+        expect(ITEM_CATALOG[giftId], `Missing cat lucky gift ${giftId}`).toBeDefined();
+      }
     }
     for (const rock of Object.values(MINE_ROCK_DEFS)) {
       expect(ITEM_CATALOG[rock.dropItemId]).toBeDefined();

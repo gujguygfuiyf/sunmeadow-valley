@@ -95,8 +95,16 @@ export class InputManager {
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
+    const isTypingInput =
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement;
+
     if (event.code === 'Escape') {
       this.callbacks.onShortcutKey?.('Escape');
+      return;
+    }
+
+    if (isTypingInput) {
       return;
     }
 
@@ -156,6 +164,8 @@ export class InputManager {
       'KeyJ',
       'KeyC',
       'KeyM',
+      'KeyP',
+      'KeyL',
     ]);
     if (shortcutCodes.has(event.code)) {
       this.callbacks.onShortcutKey?.(event.code);

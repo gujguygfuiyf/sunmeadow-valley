@@ -29,6 +29,7 @@ export interface DailyGrowthReport {
  */
 export class CropSystem {
   private readonly crops = new Map<string, PlantedCrop>();
+  revision = 0;
 
   static tileKey(x: number, y: number): string {
     return `${x},${y}`;
@@ -63,6 +64,7 @@ export class CropSystem {
       return { ok: false, reason: `${def.name}无法在当前季节露天生长（解锁温室后可四季种植）` };
     }
 
+    this.revision++;
     this.crops.set(key, {
       x,
       y,
@@ -104,6 +106,7 @@ export class CropSystem {
       rng?: () => number;
     }
   ): DailyGrowthReport {
+    this.revision++;
     let grownCount = 0;
     let readyCount = 0;
     let crowEatenCount = 0;
@@ -160,6 +163,7 @@ export class CropSystem {
 
     const def = getCropDef(crop.cropId);
     if (!def || crop.daysGrown < def.daysToGrow) return null;
+    this.revision++;
 
     const span = def.harvestMax - def.harvestMin + 1;
     const quantity = def.harvestMin + Math.floor(rng() * span);
@@ -189,6 +193,7 @@ export class CropSystem {
   }
 
   load(saved: SerializedCrop[]): void {
+    this.revision++;
     this.crops.clear();
     for (const entry of saved) {
       if (getCropDef(entry.cropId)) {
@@ -198,6 +203,7 @@ export class CropSystem {
   }
 
   clear(): void {
+    this.revision++;
     this.crops.clear();
   }
 }

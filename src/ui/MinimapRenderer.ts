@@ -10,6 +10,12 @@ import { MINE_COLS, MINE_ROWS } from '../systems/MineSystem';
 export class MinimapRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly farmTerrain = document.createElement('canvas');
+  private readonly farmCrops = document.createElement('canvas');
+  private terrainRevision = -1;
+  private cropRevision = -1;
+  private season = '';
+  private bowlFilled = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -41,6 +47,52 @@ export class MinimapRenderer {
     const map = world.tileMap;
     const sx = w / map.cols;
     const sy = h / map.rows;
+    const resized = this.farmTerrain.width !== w || this.farmTerrain.height !== h;
+    if (resized) {
+      this.farmTerrain.width = this.farmCrops.width = w;
+      this.farmTerrain.height = this.farmCrops.height = h;
+    }
+    if (resized || this.terrainRevision !== map.terrainRevision ||
+        this.season !== world.time.seasonId || this.bowlFilled !== world.pets.bowlFilledToday) {
+      this.paintFarmTerrain(world, sx, sy);
+      this.terrainRevision = map.terrainRevision;
+      this.season = world.time.seasonId;
+      this.bowlFilled = world.pets.bowlFilledToday;
+    }
+    if (resized || this.cropRevision !== world.crops.revision) {
+      const marks = this.farmCrops.getContext('2d')!;
+      marks.clearRect(0, 0, w, h);
+      marks.fillStyle = '#ffe55c';
+      for (const crop of world.crops.getAll()) {
+        if (world.crops.isReadyToHarvest(crop)) {
+          marks.fillRect(crop.x * sx, crop.y * sy, Math.max(2, sx), Math.max(2, sy));
+        }
+      }
+      this.cropRevision = world.crops.revision;
+    }
+
+    ctx.drawImage(this.farmTerrain, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    for (const a of world.livestock.animals) {
+      ctx.fillRect((a.x / TILE_SIZE) * sx - 1, (a.y / TILE_SIZE) * sy - 1, 2.5, 2.5);
+    }
+    if (world.pets.isInScene('farm', world.weather.isRainy(), world.time.minutes)) {
+      for (const cat of world.pets.cats) {
+        const cx = (cat.x / TILE_SIZE) * sx;
+        const cy = (cat.y / TILE_SIZE) * sy;
+        ctx.fillStyle = '#3b1f12';
+        ctx.fillRect(cx - 2, cy - 2, 4, 4);
+        ctx.fillStyle = '#ff8bb3';
+        ctx.fillRect(cx - 1.2, cy - 1.2, 2.4, 2.4);
+      }
+    }
+    ctx.drawImage(this.farmCrops, 0, 0);
+    this.drawPlayerDot(world.player.x / TILE_SIZE, world.player.y / TILE_SIZE, sx, sy);
+  }
+
+  private paintFarmTerrain(world: GameWorld, sx: number, sy: number): void {
+    const ctx = this.farmTerrain.getContext('2d')!;
+    const map = world.tileMap;
     const season = world.time.seasonId;
     const grassCol =
       season === 'winter' ? '#d4e6f2' : season === 'fall' ? '#c98e3e' : '#6cb043';
@@ -99,21 +151,15 @@ export class MinimapRenderer {
       );
     }
 
-    // Animals
-    ctx.fillStyle = '#ffffff';
-    for (const a of world.livestock.animals) {
-      ctx.fillRect((a.x / TILE_SIZE) * sx - 1, (a.y / TILE_SIZE) * sy - 1, 2.5, 2.5);
-    }
+    // Pet water bowl
+    ctx.fillStyle = world.pets.bowlFilledToday ? '#6bd6ff' : '#a88463';
+    ctx.fillRect(
+      FARM_LAYOUT.petBowl.x * sx,
+      FARM_LAYOUT.petBowl.y * sy,
+      Math.max(2, sx),
+      Math.max(2, sy)
+    );
 
-    // Crops ready glint
-    ctx.fillStyle = '#ffe55c';
-    for (const c of world.crops.getAll()) {
-      if (world.crops.isReadyToHarvest(c)) {
-        ctx.fillRect(c.x * sx, c.y * sy, Math.max(2, sx), Math.max(2, sy));
-      }
-    }
-
-    this.drawPlayerDot(world.player.x / TILE_SIZE, world.player.y / TILE_SIZE, sx, sy);
   }
 
   private renderHouse(world: GameWorld, w: number, h: number): void {
@@ -131,6 +177,18 @@ export class MinimapRenderer {
     ctx.fillRect(HOUSE_FIXTURES.tv.x * sx, HOUSE_FIXTURES.tv.y * sy, sx, sy);
     ctx.fillStyle = '#d97836';
     ctx.fillRect(HOUSE_FIXTURES.kitchen.x * sx, HOUSE_FIXTURES.kitchen.y * sy, 2 * sx, sy);
+
+    // Companion cats indoors
+    if (world.pets.isInScene('house', world.weather.isRainy(), world.time.minutes)) {
+      for (const cat of world.pets.cats) {
+        const cx = (cat.x / TILE_SIZE) * sx;
+        const cy = (cat.y / TILE_SIZE) * sy;
+        ctx.fillStyle = '#3b1f12';
+        ctx.fillRect(cx - 2.5, cy - 2.5, 5, 5);
+        ctx.fillStyle = '#ff8bb3';
+        ctx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
+      }
+    }
 
     this.drawPlayerDot(world.player.x / TILE_SIZE, world.player.y / TILE_SIZE, sx, sy);
   }

@@ -1533,6 +1533,710 @@ body {
   line-height: 1.55;
 }
 
+/* Companion Cats Panel */
+.pet-bowl-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pet-card {
+  align-items: flex-start;
+}
+
+.pet-portrait {
+  width: 78px;
+  height: 78px;
+  background: #efe3cb;
+}
+
+.pet-adopt-row,
+.pet-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pet-name-input {
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-main);
+  background: #fff9ea;
+  border: 2px solid var(--wood-dark);
+  border-radius: 4px;
+  width: 150px;
+}
+
+.pet-name-input.compact {
+  width: 98px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.pet-treat-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--wood-light);
+}
+
+/* =========================================================
+   12.03 YIYI ROMANTIC BIRTHDAY BLESSING INTERFACE
+   ========================================================= */
+
+.yiyi-hud-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid #ffe4ec;
+  background: linear-gradient(135deg, #e85d88 0%, #d94b78 52%, #e88d67 100%);
+  color: #fffaf5;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow:
+    0 3px 12px rgba(232, 93, 136, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  animation: yiyiRibbonPulse 2.8s ease-in-out infinite;
+}
+
+.yiyi-hud-ribbon:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 6px 18px rgba(255, 118, 162, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.yiyi-ribbon-sparkle {
+  color: #fff0a8;
+  font-size: 13px;
+}
+
+@keyframes yiyiRibbonPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 3px 12px rgba(232, 93, 136, 0.48),
+      0 0 0 0 rgba(255, 182, 206, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 4px 16px rgba(232, 93, 136, 0.68),
+      0 0 0 5px rgba(255, 182, 206, 0);
+  }
+}
+
+.birthday-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+  background: radial-gradient(ellipse at 50% 16%, #4a214d 0%, #231230 52%, #0d0714 100%);
+  overflow: hidden;
+  animation: bdayFadeIn 0.42s ease;
+}
+
+@keyframes bdayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.birthday-fx-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.birthday-scroll-shell {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 26px 16px 36px;
+  pointer-events: none;
+}
+
+.birthday-stage-card {
+  pointer-events: auto;
+  position: relative;
+  width: min(760px, 100%);
+  margin: auto 0;
+  padding: 26px 28px 22px;
+  border-radius: 20px;
+  background: linear-gradient(
+    165deg,
+    rgba(52, 25, 56, 0.84) 0%,
+    rgba(33, 17, 42, 0.88) 60%,
+    rgba(25, 13, 33, 0.92) 100%
+  );
+  border: 1.5px solid rgba(255, 212, 196, 0.42);
+  box-shadow:
+    0 24px 64px rgba(8, 3, 15, 0.72),
+    0 0 42px rgba(242, 126, 166, 0.22),
+    inset 0 1px 0 rgba(255, 240, 235, 0.28);
+  backdrop-filter: blur(10px);
+  color: #fff6f8;
+  text-align: center;
+}
+
+.bday-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 216, 226, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffeaf0;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.bday-close-btn:hover {
+  background: rgba(255, 128, 164, 0.35);
+  transform: rotate(90deg);
+}
+
+.bday-top-crest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.bday-crest-pill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  color: #ffd7ba;
+  text-transform: uppercase;
+}
+
+.bday-countdown-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(255, 194, 214, 0.15);
+  border: 1px solid rgba(255, 206, 220, 0.42);
+  color: #ffe3ec;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.bday-main-title {
+  margin: 6px 0 4px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Sans SC', serif;
+  font-size: clamp(28px, 4.4vw, 40px);
+  font-weight: 400;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #fff5e4 0%, #ffc2d4 50%, #ffe4b5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 4px 20px rgba(255, 143, 178, 0.28);
+}
+
+.bday-poetic-sub {
+  margin: 0 0 18px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Sans SC', serif;
+  font-size: 15px;
+  color: rgba(255, 232, 238, 0.88);
+  letter-spacing: 0.8px;
+}
+
+/* Cake & Two Kitties Stage */
+.bday-cake-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(255, 186, 152, 0.16) 0%,
+    rgba(255, 140, 178, 0.06) 65%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  border: 1px solid rgba(255, 218, 226, 0.22);
+}
+
+.bday-cat-guardian {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 245, 238, 0.09);
+  border: 1.5px solid rgba(255, 216, 206, 0.36);
+  border-radius: 14px;
+  padding: 12px 12px 9px;
+  width: 128px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: #fff4f7;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.bday-cat-guardian:hover {
+  transform: translateY(-4px) scale(1.03);
+  border-color: #ffb8ce;
+  background: rgba(255, 210, 225, 0.16);
+}
+
+.bday-cat-crown {
+  position: absolute;
+  top: -12px;
+  font-size: 18px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  animation: catCrownFloat 2.4s ease-in-out infinite;
+}
+
+@keyframes catCrownFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(5deg);
+  }
+}
+
+.bday-cat-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 232, 214, 0.7);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #efe3cb;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.32);
+}
+
+.bday-cat-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffe2eb;
+}
+
+.bday-cake-centerpiece {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bday-wish-status {
+  font-size: 12.5px;
+  color: #ffe5b8;
+  font-weight: 700;
+  min-height: 19px;
+}
+
+.bday-cake-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  user-select: none;
+}
+
+.bday-candles-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  margin-bottom: -2px;
+  z-index: 2;
+}
+
+.bday-candle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bday-flame {
+  width: 11px;
+  height: 16px;
+  border-radius: 50% 50% 42% 42%;
+  background: radial-gradient(circle at 50% 70%, #ffffff 0%, #ffe66d 45%, #ff8c42 85%, transparent 100%);
+  box-shadow:
+    0 0 12px #ffc857,
+    0 0 24px rgba(255, 140, 66, 0.75);
+  transform-origin: 50% 100%;
+  animation: candleFlicker 0.9s ease-in-out infinite alternate;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.bday-candle.tall .bday-flame {
+  animation-delay: 0.25s;
+}
+
+.bday-cake-art.candles-blown .bday-flame {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.2);
+  pointer-events: none;
+}
+
+@keyframes candleFlicker {
+  0% {
+    transform: rotate(-4deg) scale(0.95, 1.04);
+  }
+  50% {
+    transform: rotate(3deg) scale(1.05, 0.96);
+  }
+  100% {
+    transform: rotate(-2deg) scale(0.98, 1.06);
+  }
+}
+
+.bday-wick {
+  width: 2px;
+  height: 3px;
+  background: #3d2622;
+}
+
+.bday-stick {
+  width: 14px;
+  height: 22px;
+  border-radius: 3px 3px 1px 1px;
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff5f8,
+    #fff5f8 4px,
+    #ff85a8 4px,
+    #ff85a8 8px
+  );
+  border: 1px solid #d45b82;
+  color: #5c162e;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.bday-candle.tall .bday-stick {
+  height: 26px;
+  line-height: 24px;
+}
+
+.bday-cake-tier {
+  position: relative;
+  border: 2px solid #8c3b55;
+  box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.55);
+}
+
+.tier-top {
+  width: 96px;
+  height: 24px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #fff4e8 0%, #ffc2d4 45%, #f294b2 100%);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  font-size: 11px;
+}
+
+.tier-mid {
+  width: 142px;
+  height: 30px;
+  margin-top: -2px;
+  border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, #fff7ee 0%, #ffccd9 38%, #e87a9f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cake-plate-text {
+  font-size: 10px;
+  font-weight: 900;
+  color: #6b1d39;
+  background: rgba(255, 250, 244, 0.85);
+  padding: 1px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+}
+
+.tier-bottom {
+  width: 184px;
+  height: 26px;
+  margin-top: -2px;
+  border-radius: 8px 8px 6px 6px;
+  background: linear-gradient(180deg, #fff5eb 0%, #f7b5c9 40%, #d9648c 100%);
+}
+
+.bday-cake-stand {
+  width: 210px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e0b882, #fff1d0, #d4a36a);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.38);
+}
+
+.bday-wish-btn {
+  margin-top: 4px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  border: 1.5px solid #ffe7c7;
+  background: linear-gradient(135deg, #ff7aa8 0%, #e85584 55%, #f09467 100%);
+  color: #fffdf9;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px rgba(236, 90, 140, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bday-wish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 22px rgba(255, 118, 165, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.bday-wish-btn.compact {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+/* Warm Vellum Stationery Love Letter */
+.bday-letter-paper {
+  position: relative;
+  text-align: left;
+  padding: 22px 24px 18px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(
+      transparent,
+      transparent 29px,
+      rgba(209, 165, 155, 0.22) 30px
+    ),
+    linear-gradient(180deg, #fffbf5 0%, #faefe2 100%);
+  border: 2px solid #e6c6b8;
+  box-shadow:
+    0 10px 28px rgba(14, 5, 20, 0.42),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.65);
+  color: #4a2332;
+}
+
+.bday-wax-seal {
+  position: absolute;
+  top: -13px;
+  right: 22px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #e85d79, #a82443);
+  border: 2px solid #ffd9df;
+  color: #fff7f8;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  box-shadow: 0 4px 10px rgba(130, 24, 52, 0.42);
+}
+
+.bday-letter-content {
+  font-family: 'ZCOOL XiaoWei', 'Noto Sans SC', serif;
+  font-size: 16px;
+  line-height: 30px;
+  color: #46202e;
+  white-space: pre-line;
+  min-height: 148px;
+}
+
+.bday-letter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(176, 118, 128, 0.38);
+}
+
+.bday-letter-sign {
+  font-family: 'ZCOOL XiaoWei', 'Noto Sans SC', serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #b5385c;
+}
+
+.bday-edit-link {
+  border: none;
+  background: rgba(217, 98, 134, 0.12);
+  color: #9e3254;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bday-edit-link:hover {
+  background: rgba(217, 98, 134, 0.22);
+}
+
+.bday-editor-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 242, 246, 0.92);
+  border: 1px solid #e3b2c1;
+}
+
+.bday-editor-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e2b42;
+  margin-bottom: 6px;
+}
+
+.bday-editor-textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1.5px solid #d498ab;
+  background: #ffffff;
+  color: #3d1c29;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.bday-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bday-editor-sign-input {
+  flex: 1;
+  min-width: 170px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #d498ab;
+  background: #ffffff;
+  color: #3d1c29;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+
+.bday-editor-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.bday-sub-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #c98b9e;
+  background: #fff5f8;
+  color: #7d324b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Three Surprise Action Pills */
+.bday-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.bday-action-pill {
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 214, 224, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff3f6;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.bday-action-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 168, 198, 0.25);
+  border-color: #ffc8da;
+}
+
+.bday-action-pill.highlight {
+  background: linear-gradient(135deg, rgba(255, 154, 188, 0.34), rgba(255, 196, 142, 0.34));
+  border-color: #ffd8c2;
+}
+
+.bday-sky-hint {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: rgba(255, 224, 234, 0.72);
+}
+
+@media (max-width: 680px) {
+  .birthday-stage-card {
+    padding: 20px 16px 18px;
+  }
+  .bday-cake-stage {
+    flex-direction: column;
+  }
+  .bday-cat-guardian {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    padding: 8px 12px;
+  }
+  .bday-cat-avatar {
+    width: 54px;
+    height: 54px;
+  }
+}
+
 /* Night fade */
 .night-overlay {
   position: fixed;

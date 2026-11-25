@@ -18,6 +18,8 @@ export type SoundEffect =
   | 'catch'
   | 'craft'
   | 'pet'
+  | 'meow'
+  | 'firework'
   | 'upgrade'
   | 'bundle';
 
@@ -77,6 +79,59 @@ export class AudioManager {
 
   setSeason(season: SeasonId): void {
     this.currentSeason = season;
+  }
+
+  /**
+   * Plays a delicate crystalline music-box rendition of "Happy Birthday to You" (C major / G4 lead).
+   */
+  playBirthdayMelody(): void {
+    if (this.muted) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+
+    // [freqHz, beatDuration]
+    const notes: [number, number][] = [
+      // Phrase 1: G4 G4 A4 G4 C5 B4
+      [392.0, 0.34],
+      [392.0, 0.22],
+      [440.0, 0.52],
+      [392.0, 0.52],
+      [523.25, 0.52],
+      [493.88, 0.96],
+      // Phrase 2: G4 G4 A4 G4 D5 C5
+      [392.0, 0.34],
+      [392.0, 0.22],
+      [440.0, 0.52],
+      [392.0, 0.52],
+      [587.33, 0.52],
+      [523.25, 0.96],
+      // Phrase 3: G4 G4 G5 E5 C5 B4 A4
+      [392.0, 0.34],
+      [392.0, 0.22],
+      [783.99, 0.52],
+      [659.25, 0.52],
+      [523.25, 0.52],
+      [493.88, 0.52],
+      [440.0, 0.92],
+      // Phrase 4: F5 F5 E5 C5 D5 C5
+      [698.46, 0.34],
+      [698.46, 0.22],
+      [659.25, 0.52],
+      [523.25, 0.52],
+      [587.33, 0.56],
+      [523.25, 1.25],
+    ];
+
+    let cursor = ctx.currentTime + 0.05;
+    notes.forEach(([freq, dur], idx) => {
+      // Music-box chime + upper octave shimmer
+      this.playTone(ctx, 'triangle', freq, freq * 0.998, cursor, dur * 0.95, 0.085);
+      this.playTone(ctx, 'sine', freq * 2, freq * 2, cursor, dur * 0.55, 0.025);
+      if (idx === 2 || idx === 8 || idx === 14 || idx === 21 || idx === 24) {
+        this.playTone(ctx, 'sine', freq * 0.5, freq * 0.5, cursor, dur * 1.2, 0.045);
+      }
+      cursor += dur;
+    });
   }
 
   play(effect: SoundEffect): void {
@@ -149,6 +204,15 @@ export class AudioManager {
         break;
       case 'pet':
         this.playTone(ctx, 'sine', 587.33, 880, now, 0.12, 0.09);
+        break;
+      case 'meow':
+        this.playTone(ctx, 'sine', 640, 920, now, 0.09, 0.09);
+        this.playTone(ctx, 'sine', 920, 560, now + 0.08, 0.15, 0.08);
+        break;
+      case 'firework':
+        this.playTone(ctx, 'sine', 520, 1240, now, 0.14, 0.055);
+        this.playTone(ctx, 'triangle', 1046.5, 1567.98, now + 0.08, 0.22, 0.06);
+        this.playNoise(ctx, now + 0.06, 0.12, 0.045);
         break;
       case 'upgrade':
         this.playTone(ctx, 'square', 440, 554.37, now, 0.09, 0.07);

@@ -1,6 +1,6 @@
 import type { GameWorld } from '../core/GameWorld';
 import { getNpcDef } from '../data/npcs';
-import { DEFAULT_CAMERA_ZOOM, TILE_SIZE, type RectArea } from '../data/worldConfig';
+import { DEFAULT_CAMERA_ZOOM, TILE_SIZE, TOWN_ENTRY, type RectArea } from '../data/worldConfig';
 import { Camera } from '../engine/Camera';
 import type { CollisionGrid } from '../systems/PlayerSystem';
 import type { Scene } from './SceneManager';
@@ -69,7 +69,11 @@ export class TownScene implements Scene, CollisionGrid {
   enter(): void {
     this.portalCooldown = 0.5;
     this.lastContextPrompt = null;
-    this.camera.snapTo(this.world.player.x, this.world.player.y - 6);
+    const player = this.world.player;
+    if (player.collidesAt(player.x, player.y, this)) {
+      player.setPositionTile(TOWN_ENTRY.x, TOWN_ENTRY.y, TOWN_ENTRY.facing);
+    }
+    this.camera.snapTo(player.x, player.y - 6);
   }
 
   exit(): void {

@@ -12,6 +12,7 @@ export type GroundKind = 'grass' | 'dirt' | 'path' | 'water';
 export type PropKind = 'none' | 'fence_h' | 'fence_v' | 'rock' | 'tree' | 'sign' | 'weed';
 export type InteractiveZoneKind =
   | 'house_door'
+  | 'pet_bowl'
   | 'shipping_bin'
   | 'seed_stall'
   | 'pond'
@@ -48,6 +49,7 @@ export class TileMapSystem implements CollisionGrid {
   readonly rows = MAP_ROWS;
   readonly tileSize = TILE_SIZE;
   readonly grid: TileCell[][] = [];
+  terrainRevision = 0;
 
   greenhouseUnlocked = false;
   coopBuilt = false;
@@ -85,6 +87,7 @@ export class TileMapSystem implements CollisionGrid {
   }
 
   setGreenhouseUnlocked(unlocked: boolean): void {
+    this.terrainRevision++;
     this.greenhouseUnlocked = unlocked;
     const gh = FARM_LAYOUT.greenhouse;
     for (let y = gh.y; y < gh.y + gh.h; y++) {
@@ -107,6 +110,7 @@ export class TileMapSystem implements CollisionGrid {
   }
 
   setBuildingBuilt(kind: 'coop' | 'barn', built: boolean): void {
+    this.terrainRevision++;
     if (kind === 'coop') {
       this.coopBuilt = built;
       this.applyBuildingPad(FARM_LAYOUT.coopPad, built);
@@ -136,18 +140,21 @@ export class TileMapSystem implements CollisionGrid {
     if (!tile || tile.solid || !tile.farmable || tile.tilled) return false;
     if (tile.prop !== 'none') return false;
     tile.tilled = true;
+    this.terrainRevision++;
     return true;
   }
 
   waterTile(tx: number, ty: number): boolean {
     const tile = this.getTile(tx, ty);
     if (!tile || !tile.tilled) return false;
+    if (!tile.watered) this.terrainRevision++;
     tile.watered = true;
     return true;
   }
 
   /** Rainy/stormy mornings auto-water every tilled outdoor tile. */
   waterAllTilled(includeGreenhouse = false): number {
+    this.terrainRevision++;
     let count = 0;
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
@@ -170,6 +177,7 @@ export class TileMapSystem implements CollisionGrid {
   }
 
   dryAllSoil(): void {
+    this.terrainRevision++;
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         this.grid[y][x].watered = false;
@@ -243,6 +251,7 @@ export class TileMapSystem implements CollisionGrid {
     if (kind === 'path') {
       if (tile.ground === 'path' || tile.ground === 'water') return false;
       tile.ground = 'path';
+      this.terrainRevision++;
       tile.farmable = false;
       return true;
     }
@@ -284,6 +293,7 @@ export class TileMapSystem implements CollisionGrid {
     ) {
       return 'house_door';
     }
+    if (isInsideRect(tx, ty, FARM_LAYOUT.petBowl)) return 'pet_bowl';
     if (isInsideRect(tx, ty, FARM_LAYOUT.shippingBin)) return 'shipping_bin';
     if (isInsideRect(tx, ty, FARM_LAYOUT.seedStall)) return 'seed_stall';
     if (isInsideRect(tx, ty, FARM_LAYOUT.pond)) return 'pond';
@@ -337,6 +347,7 @@ export class TileMapSystem implements CollisionGrid {
   }
 
   loadSoil(soilTiles: SerializedSoilTile[]): void {
+    this.terrainRevision++;
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         this.grid[y][x].tilled = false;
@@ -443,6 +454,7 @@ export class TileMapSystem implements CollisionGrid {
 
     // 3. Solid landmarks
     this.markSolidRect(FARM_LAYOUT.house);
+    this.markSolidRect(FARM_LAYOUT.petBowl);
     this.markSolidRect(FARM_LAYOUT.shippingBin);
     this.markSolidRect(FARM_LAYOUT.seedStall);
     this.setGreenhouseUnlocked(false);
