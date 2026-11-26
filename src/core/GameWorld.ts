@@ -93,6 +93,9 @@ export class GameWorld {
   decorateMode = false;
   selectedFurnitureId: string | null = null;
   birthdayGiftClaimed = false;
+  birthdayLetterRead = false;
+  birthdayCandlesLit = true;
+  indoorBirthdayGathering = false;
 
   private sceneSwitcher:
     | ((target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }) => void)
@@ -113,7 +116,11 @@ export class GameWorld {
   }
 
   travelTo(target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }): void {
-    if (target !== 'farm') this.endBirthdayCelebration();
+    const leavingIndoorCelebration = this.currentSceneId === 'house' && target === 'farm' && this.indoorBirthdayGathering;
+    if (target !== 'farm') {
+      this.endBirthdayCelebration();
+      this.indoorBirthdayGathering = false;
+    }
     if (this.decorateMode && target !== 'house') {
       this.setDecorateMode(false);
     }
@@ -123,6 +130,14 @@ export class GameWorld {
     }
     this.currentSceneId = target;
     this.sceneSwitcher?.(target, spawnTile);
+    if (leavingIndoorCelebration) {
+      this.indoorBirthdayGathering = false;
+      this.pets.celebratingOnFarm = true;
+      this.placeCatsForCurrentSchedule();
+      this.particles.spawnHeartBurst(this.player.x, this.player.y - 6);
+      this.particles.spawnFloatingText(this.player.x, this.player.y - 16, '♥ 12.03 依依生日快乐 ♥', '#ffa6c9');
+      this.bus.emit('pet:changed', undefined);
+    }
     this.bus.emit('scene:changed', { sceneId: target, label: SCENE_LABELS[target] });
     this.bus.emit('inspector:changed', null);
     this.bus.emit('context:changed', { prompt: null });
@@ -422,6 +437,78 @@ export class GameWorld {
     this.placeCatsForCurrentSchedule();
     this.bus.emit('pet:changed', undefined);
     this.saveGameState();
+  }
+
+  /** Opens the porch mailbox letter addressed to Yiyi (12.03) inside the native wooden letter dialog. */
+  openPorchMailbox(): void {
+    const firstRead = !this.birthdayLetterRead;
+    this.birthdayLetterRead = true;
+    this.audio.play('ui');
+    if (firstRead) {
+      this.saveGameState();
+    }
+    this.bus.emit('ui:openMailboxLetter', undefined);
+  }
+
+  /**
+   * Interacts with the cozy candlelit strawberry cake inside the farmhouse:
+   * blows out candles into wish sparks, plays the music-box Happy Birthday song,
+   * gathers both real-cat companions around the table, and launches in-world pixel heart fireworks!
+   */
+  interactWithBirthdayCake(): void {
+    const cakeX = (HOUSE_FIXTURES.birthdayTable.x + 1) * TILE_SIZE;
+    const cakeY = HOUSE_FIXTURES.birthdayTable.y * TILE_SIZE;
+
+    if (this.birthdayCandlesLit) {
+      this.birthdayCandlesLit = false;
+      this.pets.welcomeBirthdayCats();
+      this.indoorBirthdayGathering = true;
+
+      // Seat both cats affectionately around the birthday cake table inside the cabin
+      const maine = this.pets.getCat('cat_maine_silver');
+      const bicolor = this.pets.getCat('cat_bicolor_tabby');
+      if (maine) {
+        maine.x = (HOUSE_FIXTURES.birthdayTable.x - 0.6) * TILE_SIZE;
+        maine.y = (HOUSE_FIXTURES.birthdayTable.y + 1.05) * TILE_SIZE;
+        maine.targetX = maine.x;
+        maine.targetY = maine.y;
+        maine.facing = 'right';
+        maine.state = 'idle';
+        maine.stateTimer = 4.5;
+        this.particles.spawnHeartBurst(maine.x, maine.y);
+        this.particles.spawnFloatingText(maine.x, maine.y - 16, `${maine.name}：喵呜～生日快乐！`, '#ffd4e5');
+      }
+      if (bicolor) {
+        bicolor.x = (HOUSE_FIXTURES.birthdayTable.x + 2.4) * TILE_SIZE;
+        bicolor.y = (HOUSE_FIXTURES.birthdayTable.y + 1.05) * TILE_SIZE;
+        bicolor.targetX = bicolor.x;
+        bicolor.targetY = bicolor.y;
+        bicolor.facing = 'left';
+        bicolor.state = 'idle';
+        bicolor.stateTimer = 4.5;
+        this.particles.spawnHeartBurst(bicolor.x, bicolor.y);
+        this.particles.spawnFloatingText(bicolor.x, bicolor.y - 16, `${bicolor.name}：吐舌贴贴 ♥`, '#ffe59c');
+      }
+
+      this.audio.playBirthdayMelody();
+      this.audio.play('firework');
+      this.audio.play('meow');
+      this.particles.spawnPixelHeartFirework(cakeX, cakeY - 12);
+      this.particles.spawnPixelHeartFirework(cakeX - 38, cakeY - 22);
+      this.particles.spawnPixelHeartFirework(cakeX + 32, cakeY - 20);
+      this.particles.spawnFloatingText(cakeX, cakeY - 18, '♥ 12.03 依依生日快乐 ♥', '#ffb0cf');
+
+      this.bus.emit('pet:changed', undefined);
+      this.saveGameState();
+      this.toast('🕯️ 烛光化作星愿！愿依依 12.03 生日快乐——两只小猫咪围在身旁，走出门还有漫天花瓣雨在等你 🌸');
+    } else {
+      this.birthdayCandlesLit = true;
+      this.audio.playBirthdayMelody();
+      this.audio.play('firework');
+      this.particles.spawnPixelHeartFirework(cakeX, cakeY - 14);
+      this.particles.spawnHeartBurst(cakeX, cakeY - 4);
+      this.toast('🕯️ 重新点亮了 12.03 草莓蛋糕烛光，八音盒再次为你奏响～');
+    }
   }
 
   private endBirthdayCelebration(): void {
@@ -890,6 +977,7 @@ export class GameWorld {
   triggerSleep(): void {
     if (this.sleepingTransition) return;
     this.endBirthdayCelebration();
+    this.indoorBirthdayGathering = false;
     this.sleepingTransition = true;
     this.setDecorateMode(false);
     this.activeDialogueNpcId = null;
@@ -998,6 +1086,9 @@ export class GameWorld {
   resetFarm(): void {
     this.saveManager.clear();
     this.birthdayGiftClaimed = false;
+    this.birthdayLetterRead = false;
+    this.birthdayCandlesLit = true;
+    this.indoorBirthdayGathering = false;
     this.tileMap.resetToDefault();
     this.crops.clear();
     this.inventory.resetToStarter();
@@ -1075,6 +1166,7 @@ export class GameWorld {
       unlockedMineElevator: colData.unlockedMineElevator,
       pets: this.pets.serialize(),
       birthdayGiftClaimed: this.birthdayGiftClaimed,
+      birthdayLetterRead: this.birthdayLetterRead,
     };
   }
 
@@ -1082,6 +1174,8 @@ export class GameWorld {
     const saved = this.saveManager.load();
     if (!saved) return false;
     this.birthdayGiftClaimed = saved.birthdayGiftClaimed === true;
+    this.birthdayLetterRead = saved.birthdayLetterRead === true;
+    this.indoorBirthdayGathering = false;
 
     this.time.load(saved.day, saved.season, saved.timeMinutes);
     this.audio.setSeason(this.time.seasonId);

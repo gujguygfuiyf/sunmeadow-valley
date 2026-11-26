@@ -378,7 +378,6 @@ export class HudController {
     mustGetEl('btn-bundles').addEventListener('click', () => toggleOrOpen('bundles', () => this.openBundles()));
     mustGetEl('btn-villagers').addEventListener('click', () => toggleOrOpen('villagers', () => this.openVillagers()));
     mustGetEl('btn-pets').addEventListener('click', () => toggleOrOpen('pets', () => this.openPets()));
-    mustGetEl('btn-yiyi-birthday').addEventListener('click', () => toggleOrOpen('birthday', () => this.openBirthday()));
     mustGetEl('btn-shop').addEventListener('click', () => toggleOrOpen('shop', () => this.openShop()));
     mustGetEl('btn-furniture').addEventListener('click', () => toggleOrOpen('furniture', () => this.openFurnitureShop()));
     mustGetEl('btn-blacksmith').addEventListener('click', () => toggleOrOpen('blacksmith', () => this.openBlacksmith()));
@@ -631,6 +630,7 @@ export class HudController {
     bus.on('ui:openBundles', () => this.openBundles());
     bus.on('ui:openMap', () => this.openMap());
     bus.on('ui:openPets', () => this.openPets());
+    bus.on('ui:openMailboxLetter', () => this.openBirthday());
     bus.on('ui:openHelp', () => this.openHelp());
   }
 

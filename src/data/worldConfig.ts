@@ -26,6 +26,8 @@ export const FARM_LAYOUT = {
   house: { x: 4, y: 2, w: 5, h: 4 } as RectArea,
   /** Interactive porch door tile in front of the house */
   houseDoor: { x: 6, y: 6 },
+  /** Cozy porch mailbox beside the farmhouse front door */
+  mailbox: { x: 8, y: 6, w: 1, h: 1 } as RectArea,
   /** Cozy outdoor pet water bowl beside the farmhouse */
   petBowl: { x: 9, y: 4, w: 1, h: 1 } as RectArea,
   /** Shipping bin directly east of the farmhouse */

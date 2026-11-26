@@ -89,9 +89,6 @@ function bootstrap(): void {
       } else if (code === 'KeyP') {
         audio.play('ui');
         hud.openPets();
-      } else if (code === 'KeyL') {
-        audio.play('ui');
-        hud.openBirthday();
       } else if (code === 'KeyH') {
         audio.play('ui');
         hud.openHelp();
@@ -158,12 +155,6 @@ function bootstrap(): void {
     world.toast('欢迎来到晨露谷！种田、钓鱼、砍树挖矿、造机器、养动物、探索小镇尽情体验！');
   }
 
-  // Support direct romantic link (#1203 / #birthday / ?yiyi) to open Yiyi's 12.03 Birthday Screen immediately!
-  const urlTag = `${window.location.hash} ${window.location.search}`.toLowerCase();
-  if (urlTag.includes('1203') || urlTag.includes('birthday') || urlTag.includes('yiyi')) {
-    hud.openBirthday();
-  }
-
   const loop = new GameLoop({
     update: (dt) => {
       if (!hud.hasOpenModal()) {
@@ -171,7 +162,6 @@ function bootstrap(): void {
       }
     },
     render: () => {
-      if (hud.isBirthdayOpen()) return;
       sceneManager.render(ctx, viewportWidth, viewportHeight);
       hud.renderFrameHud();
     },

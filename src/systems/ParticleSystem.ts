@@ -97,6 +97,36 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * Spawns a gentle Stardew-native pixel heart-shaped firework burst directly inside the world canvas!
+   */
+  spawnPixelHeartFirework(worldX: number, worldY: number): void {
+    const colors = ['#ff759e', '#ffb8cf', '#ffe48f', '#f5a9f5', '#fff6dc'];
+    const count = 26;
+    for (let i = 0; i < count; i++) {
+      const t = (i / count) * Math.PI * 2;
+      const hx = 16 * Math.pow(Math.sin(t), 3);
+      const hy = -(
+        13 * Math.cos(t) -
+        5 * Math.cos(2 * t) -
+        2 * Math.cos(3 * t) -
+        Math.cos(4 * t)
+      );
+      const scale = 1.65 + Math.random() * 0.35;
+      this.particles.push({
+        x: worldX,
+        y: worldY,
+        vx: hx * scale,
+        vy: hy * scale - 6,
+        gravity: 18,
+        size: i % 3 === 0 ? 2 : 1.5,
+        color: colors[i % colors.length],
+        life: 0.95 + Math.random() * 0.35,
+        maxLife: 1.3,
+      });
+    }
+  }
+
   spawnFloatingText(worldX: number, worldY: number, text: string, color = '#fff6d1'): void {
     this.texts.push({
       x: worldX,

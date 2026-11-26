@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameWorld } from '../../core/GameWorld';
-import { TOWN_ENTRY, TILE_SIZE } from '../../data/worldConfig';
+import { FARM_LAYOUT, TOWN_ENTRY, TILE_SIZE } from '../../data/worldConfig';
 import { AudioManager } from '../../engine/AudioManager';
 import { EventBus } from '../../engine/EventBus';
 import type { InputManager } from '../../engine/InputManager';
 import { SaveManager } from '../../engine/SaveManager';
 import type { SpriteAtlas } from '../../engine/SpriteAtlas';
 import { TownScene } from '../../scenes/TownScene';
+import { HOUSE_FIXTURES } from '../HouseInteriorSystem';
 
 function memorySave(): SaveManager {
   const records = new Map<string, string>();
@@ -112,6 +113,43 @@ describe('Birthday companions', () => {
     expect(world.pets.celebratingOnFarm).toBe(false);
     expect(world.pets.getActiveScene(false, 600)).toBe('farm');
     expect(world.pets.getActiveScene(true, 600)).toBe('house');
+  });
+
+  it('persists porch mailbox read state and flows from indoor cake candle wish to outdoor petal celebration', () => {
+    const storage = memorySave();
+    const world = game(storage);
+
+    expect(world.tileMap.getInteractiveZoneAt(FARM_LAYOUT.mailbox.x, FARM_LAYOUT.mailbox.y)).toBe('mailbox');
+    expect(world.house.isSolid(HOUSE_FIXTURES.birthdayTable.x, HOUSE_FIXTURES.birthdayTable.y)).toBe(true);
+    expect(world.house.isBirthdayTableZone(HOUSE_FIXTURES.birthdayTable.x, HOUSE_FIXTURES.birthdayTable.y + 1)).toBe(true);
+
+    // Open porch mailbox -> marks letter read & persists across reload
+    let openedCount = 0;
+    world.bus.on('ui:openMailboxLetter', () => {
+      openedCount += 1;
+    });
+    expect(world.birthdayLetterRead).toBe(false);
+    world.openPorchMailbox();
+    expect(openedCount).toBe(1);
+    expect(world.birthdayLetterRead).toBe(true);
+
+    const restored = game(storage);
+    expect(restored.loadGameState()).toBe(true);
+    expect(restored.birthdayLetterRead).toBe(true);
+
+    // Enter farmhouse and blow out cake candles -> gathers both 5-heart cats indoors
+    world.travelTo('house');
+    expect(world.birthdayCandlesLit).toBe(true);
+    world.interactWithBirthdayCake();
+    expect(world.birthdayCandlesLit).toBe(false);
+    expect(world.indoorBirthdayGathering).toBe(true);
+    expect(world.pets.cats.length).toBe(2);
+    expect(world.pets.cats.map((c) => world.pets.getHearts(c))).toEqual([5, 5]);
+
+    // Step back out onto the farm -> automatically transitions into outdoor petal celebration!
+    world.travelTo('farm');
+    expect(world.indoorBirthdayGathering).toBe(false);
+    expect(world.pets.celebratingOnFarm).toBe(true);
   });
 });
 

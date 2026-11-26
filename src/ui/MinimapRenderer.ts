@@ -16,6 +16,7 @@ export class MinimapRenderer {
   private cropRevision = -1;
   private season = '';
   private bowlFilled = false;
+  private letterRead = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -53,11 +54,13 @@ export class MinimapRenderer {
       this.farmTerrain.height = this.farmCrops.height = h;
     }
     if (resized || this.terrainRevision !== map.terrainRevision ||
-        this.season !== world.time.seasonId || this.bowlFilled !== world.pets.bowlFilledToday) {
+        this.season !== world.time.seasonId || this.bowlFilled !== world.pets.bowlFilledToday ||
+        this.letterRead !== world.birthdayLetterRead) {
       this.paintFarmTerrain(world, sx, sy);
       this.terrainRevision = map.terrainRevision;
       this.season = world.time.seasonId;
       this.bowlFilled = world.pets.bowlFilledToday;
+      this.letterRead = world.birthdayLetterRead;
     }
     if (resized || this.cropRevision !== world.crops.revision) {
       const marks = this.farmCrops.getContext('2d')!;
@@ -151,6 +154,15 @@ export class MinimapRenderer {
       );
     }
 
+    // Porch mailbox
+    ctx.fillStyle = world.birthdayLetterRead ? '#698db0' : '#f04d63';
+    ctx.fillRect(
+      FARM_LAYOUT.mailbox.x * sx,
+      FARM_LAYOUT.mailbox.y * sy,
+      Math.max(2, sx),
+      Math.max(2, sy)
+    );
+
     // Pet water bowl
     ctx.fillStyle = world.pets.bowlFilledToday ? '#6bd6ff' : '#a88463';
     ctx.fillRect(
@@ -177,9 +189,19 @@ export class MinimapRenderer {
     ctx.fillRect(HOUSE_FIXTURES.tv.x * sx, HOUSE_FIXTURES.tv.y * sy, sx, sy);
     ctx.fillStyle = '#d97836';
     ctx.fillRect(HOUSE_FIXTURES.kitchen.x * sx, HOUSE_FIXTURES.kitchen.y * sy, 2 * sx, sy);
+    ctx.fillStyle = '#ff9bb8';
+    ctx.fillRect(
+      HOUSE_FIXTURES.birthdayTable.x * sx,
+      HOUSE_FIXTURES.birthdayTable.y * sy,
+      HOUSE_FIXTURES.birthdayTable.w * sx,
+      HOUSE_FIXTURES.birthdayTable.h * sy
+    );
 
     // Companion cats indoors
-    if (world.pets.isInScene('house', world.weather.isRainy(), world.time.minutes)) {
+    if (
+      world.indoorBirthdayGathering ||
+      world.pets.isInScene('house', world.weather.isRainy(), world.time.minutes)
+    ) {
       for (const cat of world.pets.cats) {
         const cx = (cat.x / TILE_SIZE) * sx;
         const cy = (cat.y / TILE_SIZE) * sy;

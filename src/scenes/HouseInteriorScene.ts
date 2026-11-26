@@ -87,9 +87,7 @@ export class HouseInteriorScene implements Scene {
     }
 
     this.world.advanceClock(dt);
-    if (
-      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
-    ) {
+    if (this.shouldShowCatsIndoors()) {
       this.world.pets.update(
         dt,
         'house',
@@ -129,9 +127,7 @@ export class HouseInteriorScene implements Scene {
       return;
     }
 
-    if (
-      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
-    ) {
+    if (this.shouldShowCatsIndoors()) {
       const clickedCat = pickCat(this.world, wp.x, wp.y);
       if (clickedCat) {
         const d = Math.hypot(clickedCat.x - this.world.player.x, clickedCat.y - this.world.player.y);
@@ -140,6 +136,11 @@ export class HouseInteriorScene implements Scene {
           return;
         }
       }
+    }
+
+    if (this.world.house.isBirthdayTableZone(tx, ty)) {
+      this.world.interactWithBirthdayCake();
+      return;
     }
 
     if (this.world.house.isTvZone(tx, ty)) {
@@ -188,7 +189,9 @@ export class HouseInteriorScene implements Scene {
       return;
     }
 
-    if (this.world.house.isTvZone(tx, ty)) {
+    if (this.world.house.isBirthdayTableZone(tx, ty)) {
+      this.world.interactWithBirthdayCake();
+    } else if (this.world.house.isTvZone(tx, ty)) {
       this.world.openTvBroadcast();
     } else if (this.world.house.isKitchenZone(tx, ty)) {
       this.world.audio.play('ui');
@@ -210,9 +213,7 @@ export class HouseInteriorScene implements Scene {
   handleInteractKey(): void {
     if (this.world.sleepingTransition) return;
 
-    if (
-      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
-    ) {
+    if (this.shouldShowCatsIndoors()) {
       const nearCat = this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26);
       if (nearCat) {
         this.world.interactWithCat(nearCat);
@@ -222,6 +223,11 @@ export class HouseInteriorScene implements Scene {
 
     const px = this.world.player.tileX;
     const py = this.world.player.tileY;
+
+    if (this.world.house.isBirthdayTableZone(px, py)) {
+      this.world.interactWithBirthdayCake();
+      return;
+    }
 
     if (this.world.house.isTvZone(px, py)) {
       this.world.openTvBroadcast();
@@ -297,11 +303,7 @@ export class HouseInteriorScene implements Scene {
     const py = this.world.player.tileY;
     let prompt: string | null = null;
 
-    const nearCat = this.world.pets.isInScene(
-      'house',
-      this.world.weather.isRainy(),
-      this.world.time.minutes
-    )
+    const nearCat = this.shouldShowCatsIndoors()
       ? this.world.pets.findNearbyCat(this.world.player.x, this.world.player.y, 26)
       : null;
 
@@ -311,7 +313,11 @@ export class HouseInteriorScene implements Scene {
       const hearts = this.world.pets.getHearts(nearCat);
       prompt = nearCat.pendingGiftItemId
         ? `按 E 抚摸【${nearCat.name}】并领取清晨小礼物！`
-        : `按 E 抚摸壁炉旁的【${nearCat.name}】（♥ ${hearts}/5 · 按 P 打开猫咪面板）`;
+        : `按 E 抚摸小屋里的【${nearCat.name}】（♥ ${hearts}/5 · 按 P 打开猫咪面板）`;
+    } else if (this.world.house.isBirthdayTableZone(px, py)) {
+      prompt = this.world.birthdayCandlesLit
+        ? '草莓生日蛋糕：按 E 或点击闭眼许愿，吹灭 12.03 生日蜡烛'
+        : '草莓生日蛋糕：按 E 重燃烛光再听八音盒生日歌，或走出农舍看漫天花瓣雨';
     } else if (this.world.house.isTvZone(px, py)) {
       prompt = '按 E 或点击复古电视：收看【明日天气预报】与【农耕小贴士】';
     } else if (this.world.house.isKitchenZone(px, py)) {
@@ -460,6 +466,32 @@ export class HouseInteriorScene implements Scene {
       });
     }
 
+    // Cozy Strawberry Birthday Cake Table (Yiyi 12.03 in-world easter egg!)
+    const cakeFrame = Math.floor(this.elapsedTime * 5) % 2;
+    const cakeSpriteKey = this.world.birthdayCandlesLit
+      ? `interior_cake_table_lit_${cakeFrame}`
+      : 'interior_cake_table_blown';
+    const cakeSprite = this.world.atlas.get(cakeSpriteKey);
+    if (cakeSprite) {
+      const cakeDrawX = HOUSE_FIXTURES.birthdayTable.x * TILE_SIZE;
+      const cakeDrawY = (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE - cakeSprite.height + 2;
+      renderables.push({
+        sortY: (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE,
+        draw: (c) => {
+          c.drawImage(cakeSprite, cakeDrawX, cakeDrawY);
+          if (this.world.birthdayCandlesLit) {
+            c.save();
+            c.globalAlpha = 0.16 + Math.sin(this.elapsedTime * 6) * 0.035;
+            c.fillStyle = '#ffd57a';
+            c.beginPath();
+            c.arc(cakeDrawX + 16, cakeDrawY + 4, 20, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+          }
+        },
+      });
+    }
+
     // Placed solid furniture
     for (const item of house.placed) {
       const def = getFurnitureDef(item.furnitureId);
@@ -485,10 +517,8 @@ export class HouseInteriorScene implements Scene {
       });
     }
 
-    // Companion Cats (curled up warmly indoors on rainy days or after 19:00!)
-    if (
-      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
-    ) {
+    // Companion Cats (indoors on rainy days, evenings, or during Yiyi's indoor cake wish!)
+    if (this.shouldShowCatsIndoors()) {
       for (const cat of this.world.pets.cats) {
         const sprite = this.world.atlas.get(this.world.pets.getSpriteKey(cat));
         if (!sprite) continue;
@@ -562,6 +592,49 @@ export class HouseInteriorScene implements Scene {
     this.world.particles.renderWorld(ctx);
     ctx.restore();
 
+    if (this.world.indoorBirthdayGathering) {
+      this.renderIndoorPetalShower(ctx, viewportWidth, viewportHeight);
+    }
+
     this.world.particles.renderFloatingTexts(ctx, camX, camY, zoom);
+  }
+
+  private shouldShowCatsIndoors(): boolean {
+    return (
+      this.world.indoorBirthdayGathering ||
+      this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
+    );
+  }
+
+  private renderIndoorPetalShower(
+    ctx: CanvasRenderingContext2D,
+    viewportWidth: number,
+    viewportHeight: number
+  ): void {
+    ctx.save();
+    const petalColors = [
+      'rgba(255, 182, 210, 0.78)',
+      'rgba(255, 224, 236, 0.72)',
+      'rgba(255, 232, 182, 0.68)',
+    ];
+    for (let i = 0; i < 22; i++) {
+      const seed = i * 83.17;
+      const x =
+        ((seed * 17 + viewportWidth * 2 - this.elapsedTime * (12 + (i % 3) * 4)) %
+          (viewportWidth + 40)) -
+        20 +
+        Math.sin(this.elapsedTime * 1.6 + i) * 12;
+      const y = ((seed * 11 + this.elapsedTime * (20 + (i % 4) * 5)) % (viewportHeight + 30)) - 15;
+      const rot = this.elapsedTime * (1.1 + (i % 3) * 0.35) + i;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.fillStyle = petalColors[i % petalColors.length];
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 4, 2.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   }
 }

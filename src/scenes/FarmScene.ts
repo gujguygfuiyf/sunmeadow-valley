@@ -728,6 +728,9 @@ export class FarmScene implements Scene {
           facing: 'up',
         });
         break;
+      case 'mailbox':
+        this.world.openPorchMailbox();
+        break;
       case 'pet_bowl': {
         const held = this.world.inventory.getSelectedItemDef();
         if (held?.toolKind === 'watering_can') {
@@ -809,6 +812,13 @@ export class FarmScene implements Scene {
         return (
           Math.abs(px - FARM_LAYOUT.houseDoor.x) <= 2 &&
           Math.abs(py - FARM_LAYOUT.houseDoor.y) <= 2
+        );
+      case 'mailbox':
+        return checkRect(
+          FARM_LAYOUT.mailbox.x,
+          FARM_LAYOUT.mailbox.y,
+          FARM_LAYOUT.mailbox.w,
+          FARM_LAYOUT.mailbox.h
         );
       case 'pet_bowl':
         return checkRect(
@@ -913,6 +923,10 @@ export class FarmScene implements Scene {
         );
         if (nearbyZone === 'house_door') {
           prompt = '按 E 进入农舍小屋（电视天气预报 / 厨房烹饪 / 自由装修 / 休息）';
+        } else if (nearbyZone === 'mailbox') {
+          prompt = this.world.birthdayLetterRead
+            ? '门廊信箱：按 E 重读寄给依依的 12.03 火漆来信'
+            : '门廊信箱：按 E 或点击拆开一封寄给依依的火漆来信';
         } else if (nearbyZone === 'pet_bowl') {
           if (!this.world.pets.hasAnyCat()) {
             prompt = '猫咪水碗：按 E 或点击领养你的两只专属小猫咪！(按 P)';
@@ -1150,6 +1164,39 @@ export class FarmScene implements Scene {
             FARM_LAYOUT.shippingBin.x * TILE_SIZE,
             FARM_LAYOUT.shippingBin.y * TILE_SIZE - 8
           ),
+      });
+    }
+
+    // Porch Mailbox beside the farmhouse front door
+    const mailboxSprite = this.world.atlas.get(
+      this.world.birthdayLetterRead ? 'farm_mailbox_read' : 'farm_mailbox_unread'
+    );
+    if (mailboxSprite) {
+      renderables.push({
+        sortY: (FARM_LAYOUT.mailbox.y + FARM_LAYOUT.mailbox.h) * TILE_SIZE,
+        draw: (c) => {
+          const mx = FARM_LAYOUT.mailbox.x * TILE_SIZE;
+          const my = (FARM_LAYOUT.mailbox.y + 1) * TILE_SIZE - mailboxSprite.height;
+          c.drawImage(mailboxSprite, mx, my);
+          // Classic Stardew unread letter bubble bobbing gently above mailbox
+          if (!this.world.birthdayLetterRead) {
+            const bob = Math.round(Math.sin(this.elapsedTime * 3.8) * 1.6);
+            const ex = mx + 3;
+            const ey = my - 8 + bob;
+            c.fillStyle = '#3b1f12';
+            c.fillRect(ex - 1, ey - 1, 10, 8);
+            c.fillStyle = '#fff9ee';
+            c.fillRect(ex, ey, 8, 6);
+            c.fillStyle = '#d4b89c';
+            c.fillRect(ex + 1, ey + 1, 1, 1);
+            c.fillRect(ex + 6, ey + 1, 1, 1);
+            c.fillRect(ex + 2, ey + 2, 1, 1);
+            c.fillRect(ex + 5, ey + 2, 1, 1);
+            // Tiny crimson heart wax seal
+            c.fillStyle = '#e04869';
+            c.fillRect(ex + 3, ey + 2, 2, 2);
+          }
+        },
       });
     }
 

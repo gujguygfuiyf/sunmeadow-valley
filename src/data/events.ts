@@ -102,5 +102,6 @@ export type GameEvents = {
   'ui:openBundles': void;
   'ui:openMap': void;
   'ui:openPets': void;
+  'ui:openMailboxLetter': void;
   'ui:openHelp': void;
 };

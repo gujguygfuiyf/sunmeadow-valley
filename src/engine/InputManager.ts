@@ -165,7 +165,6 @@ export class InputManager {
       'KeyC',
       'KeyM',
       'KeyP',
-      'KeyL',
     ]);
     if (shortcutCodes.has(event.code)) {
       this.callbacks.onShortcutKey?.(event.code);

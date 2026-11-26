@@ -12,6 +12,7 @@ export type GroundKind = 'grass' | 'dirt' | 'path' | 'water';
 export type PropKind = 'none' | 'fence_h' | 'fence_v' | 'rock' | 'tree' | 'sign' | 'weed';
 export type InteractiveZoneKind =
   | 'house_door'
+  | 'mailbox'
   | 'pet_bowl'
   | 'shipping_bin'
   | 'seed_stall'
@@ -293,6 +294,7 @@ export class TileMapSystem implements CollisionGrid {
     ) {
       return 'house_door';
     }
+    if (isInsideRect(tx, ty, FARM_LAYOUT.mailbox)) return 'mailbox';
     if (isInsideRect(tx, ty, FARM_LAYOUT.petBowl)) return 'pet_bowl';
     if (isInsideRect(tx, ty, FARM_LAYOUT.shippingBin)) return 'shipping_bin';
     if (isInsideRect(tx, ty, FARM_LAYOUT.seedStall)) return 'seed_stall';
@@ -454,6 +456,7 @@ export class TileMapSystem implements CollisionGrid {
 
     // 3. Solid landmarks
     this.markSolidRect(FARM_LAYOUT.house);
+    this.markSolidRect(FARM_LAYOUT.mailbox);
     this.markSolidRect(FARM_LAYOUT.petBowl);
     this.markSolidRect(FARM_LAYOUT.shippingBin);
     this.markSolidRect(FARM_LAYOUT.seedStall);

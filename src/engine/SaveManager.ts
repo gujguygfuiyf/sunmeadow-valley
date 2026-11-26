@@ -140,6 +140,7 @@ export interface GameSaveData {
   unlockedMineElevator?: boolean;
   pets?: SerializedPetState | null;
   birthdayGiftClaimed?: boolean;
+  birthdayLetterRead?: boolean;
 }
 
 export interface StorageBackend {
