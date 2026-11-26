@@ -19,8 +19,8 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&family=Silkscreen:wght@400;700&family=ZCOOL+XiaoWei&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/index-CcazcnYr.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BYdVq1gE.css">
+    <script type="module" crossorigin src="./assets/index-P2UiI1MV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-gm68AX4b.css">
   </head>
   <body>
     <main id="game-root" class="game-root" aria-label="晨露谷物语游戏画面">
@@ -35,12 +35,6 @@
           <span id="hud-location" class="location-tag">晨露农场</span>
           <span id="hud-weather" class="weather-tag">晴朗 ☀</span>
         </div>
-
-        <button id="btn-yiyi-birthday" class="yiyi-hud-ribbon" type="button" title="打开致依依 12.03 专属浪漫生日祝福界面 (快捷键 L)">
-          <span class="yiyi-ribbon-sparkle">✦</span>
-          <span>🎂 12.03 · 致依依生日祝福 (L)</span>
-          <span class="yiyi-ribbon-sparkle">♥</span>
-        </button>
 
         <div id="hud-festival-banner" class="festival-banner hidden">
           🎉 今日节日：<span id="hud-festival-name">春季花舞节</span>（去小镇广场庆祝！）
@@ -471,7 +465,7 @@
             <li><kbd>1 - 9</kbd> / <kbd>滚轮</kbd>：切换快捷栏（1 锄头、2 喷壶、3 伐木斧、4 十字镐、5 镰刀、6 竹钓竿、7 铁剑、8-9 种子）</li>
             <li><kbd>左键</kbd> / <kbd>空格</kbd>：耕地、浇水、砍树、挖矿、甩竿钓鱼、挥剑击退史莱姆、放置机器</li>
             <li><kbd>E</kbd> / <kbd>右键</kbd>：收获作物、抚摸动物、与机器/电视/厨房/村民互动，或直接食用手中食物恢复体力</li>
-            <li><kbd>I</kbd> 36格大背包 · <kbd>K</kbd> 制作工坊 · <kbd>J</kbd> 每日委托 · <kbd>C</kbd> 社区中心献祭与图鉴 · <kbd>V</kbd> 村民好感 · <kbd>P</kbd> 伴侣猫咪 · <kbd>L</kbd> 12.03依依生日祝福 · <kbd>M</kbd> 世界地图 · <kbd>F</kbd> 农舍装修 · <kbd>N</kbd> 休息进入明天</li>
+            <li><kbd>I</kbd> 36格大背包 · <kbd>K</kbd> 制作工坊 · <kbd>J</kbd> 每日委托 · <kbd>C</kbd> 社区中心献祭与图鉴 · <kbd>V</kbd> 村民好感 · <kbd>P</kbd> 伴侣猫咪 · <kbd>M</kbd> 世界地图 · <kbd>F</kbd> 农舍装修 · <kbd>N</kbd> 休息进入明天</li>
           </ul>
           <p class="help-tip">
             成长路线：砍树敲石头造<strong>储物箱/稻草人/熔炉</strong> → 去东北山路<strong>晨露矿洞</strong>挖矿熔锭升级大范围农具 → 造<strong>果酱桶/酿酒桶/鸡舍畜棚</strong>赚大钱 → 完成<strong>社区中心收集包</strong>解锁<strong>四季温室与矿车快传</strong>！
@@ -482,116 +476,60 @@
       <!-- Night Fade Overlay -->
       <div id="night-overlay" class="night-overlay" aria-hidden="true"></div>
 
-      <!-- ================= 12.03 YIYI ROMANTIC BIRTHDAY BLESSING OVERLAY ================= -->
+      <!-- Native Stardew-style Porch Mailbox Letter Modal (12.03 Yiyi Easter Egg) -->
       <section
-        id="modal-birthday"
-        class="birthday-overlay hidden"
+        id="modal-letter"
+        class="modal-backdrop hidden"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="bday-main-title"
+        aria-labelledby="letter-modal-title"
       >
-        <canvas id="birthday-fx-canvas" class="birthday-fx-canvas"></canvas>
+        <div class="wood-panel modal-card letter-modal">
+          <div class="modal-header letter-header">
+            <div>
+              <h2 id="letter-modal-title" class="modal-title">💌 晨露谷来信 · 致依依</h2>
+              <p id="letter-postmark" class="modal-subtitle">邮戳：12 月 3 日 · 晨露农场门廊信箱</p>
+            </div>
+            <div class="letter-header-right">
+              <div class="letter-stamps" aria-hidden="true">
+                <img id="letter-cat-left-img" class="letter-stamp-img" src="" alt="灰绒邮票" />
+                <img id="letter-cat-right-img" class="letter-stamp-img" src="" alt="奶盖邮票" />
+              </div>
+              <button id="btn-close-letter" class="wood-btn close-btn" type="button">✕</button>
+            </div>
+          </div>
 
-        <div class="birthday-scroll-shell">
-          <article class="birthday-stage-card">
-            <button id="btn-close-birthday" class="bday-close-btn" type="button" title="返回晨露谷 (Esc)">✕</button>
-
-            <div class="bday-top-crest">
-              <span class="bday-crest-pill">✦ DECEMBER 03 · 晨露星光特别企划 ✦</span>
-              <div id="bday-countdown-badge" class="bday-countdown-badge">正在点亮 12.03 星辰……</div>
+          <div class="letter-paper" id="letter-paper">
+            <div class="letter-wax-seal" aria-hidden="true">♥ 12.03</div>
+            <div id="letter-content" class="letter-content"></div>
+            <div class="letter-footer-row">
+              <span id="letter-sign" class="letter-sign"></span>
+              <button id="btn-letter-edit-toggle" class="letter-edit-btn" type="button">✏️ 改写来信与落款</button>
             </div>
 
-            <h2 id="bday-main-title" class="bday-main-title">致最爱的依依 · 生日快乐</h2>
-            <p class="bday-poetic-sub">“愿十二月初冬的星河与花海，都化作落向你掌心的偏爱与温柔”</p>
-
-            <!-- Interactive Two Cats + Flickering 3-Candle Cake Stage -->
-            <div class="bday-cake-stage">
-              <button id="bday-cat-left" class="bday-cat-guardian" type="button" title="点击摸摸小猫咪">
-                <div class="bday-cat-crown">👑</div>
-                <img id="bday-cat-left-img" class="bday-cat-avatar" src="" alt="银虎斑缅因小猫" />
-                <span id="bday-cat-left-name" class="bday-cat-tag">灰绒 · 喵呜陪你</span>
-              </button>
-
-              <div class="bday-cake-centerpiece">
-                <div id="bday-wish-status" class="bday-wish-status">点击下方按钮闭眼许愿，吹灭 12·03 星愿蜡烛 ✨</div>
-                <div id="bday-cake-art" class="bday-cake-art" aria-label="三层草莓玫瑰生日蛋糕">
-                  <div class="bday-candles-row">
-                    <div class="bday-candle">
-                      <span class="bday-flame"></span>
-                      <span class="bday-wick"></span>
-                      <span class="bday-stick">1</span>
-                    </div>
-                    <div class="bday-candle tall">
-                      <span class="bday-flame"></span>
-                      <span class="bday-wick"></span>
-                      <span class="bday-stick">2</span>
-                    </div>
-                    <div class="bday-candle">
-                      <span class="bday-flame"></span>
-                      <span class="bday-wick"></span>
-                      <span class="bday-stick">3</span>
-                    </div>
-                  </div>
-                  <div class="bday-cake-tier tier-top">
-                    <span class="cake-berry">🍓</span><span class="cake-berry">🍓</span><span class="cake-berry">🍓</span>
-                  </div>
-                  <div class="bday-cake-tier tier-mid">
-                    <span class="cake-frosting"></span>
-                    <span class="cake-plate-text">♥ Happy Birthday Yiyi ♥</span>
-                  </div>
-                  <div class="bday-cake-tier tier-bottom"></div>
-                  <div class="bday-cake-stand"></div>
-                </div>
-
-                <button id="btn-bday-wish" class="bday-wish-btn" type="button">
-                  🕯️ 闭上眼许个愿 · 吹灭生日蜡烛
-                </button>
-              </div>
-
-              <button id="bday-cat-right" class="bday-cat-guardian" type="button" title="点击摸摸小猫咪">
-                <div class="bday-cat-crown">🎀</div>
-                <img id="bday-cat-right-img" class="bday-cat-avatar" src="" alt="棕斑加白圆脸小猫" />
-                <span id="bday-cat-right-name" class="bday-cat-tag">奶盖 · 吐舌贴贴</span>
-              </button>
-            </div>
-
-            <!-- Romantic Vellum Love & Birthday Letter -->
-            <div class="bday-letter-paper" id="bday-letter-paper">
-              <div class="bday-wax-seal" aria-hidden="true">♥ 12.03</div>
-              <div id="bday-letter-content" class="bday-letter-content"></div>
-              <div class="bday-letter-footer">
-                <span id="bday-letter-sign" class="bday-letter-sign"></span>
-                <button id="btn-bday-edit-toggle" class="bday-edit-link" type="button">✏️ 定制专属情书与落款</button>
-              </div>
-
-              <!-- Optional inline custom message editor (persisted in localStorage) -->
-              <div id="bday-editor-box" class="bday-editor-box hidden">
-                <label class="bday-editor-label" for="bday-editor-textarea">写给依依的生日祝福正文（自动保存在本地浏览器）：</label>
-                <textarea id="bday-editor-textarea" class="bday-editor-textarea" rows="5"></textarea>
-                <div class="bday-editor-row">
-                  <input id="bday-editor-sign-input" class="bday-editor-sign-input" type="text" maxlength="40" placeholder="落款签名…" />
-                  <div class="bday-editor-btns">
-                    <button id="btn-bday-reset-letter" class="bday-sub-btn" type="button">恢复默认文案</button>
-                    <button id="btn-bday-save-letter" class="bday-wish-btn compact" type="button">保存并重新展开信笺 ✨</button>
-                  </div>
+            <div id="letter-editor-box" class="letter-editor-box hidden">
+              <label class="letter-editor-label" for="letter-editor-textarea">自定义寄给依依的信笺正文（保存在本地浏览器）：</label>
+              <textarea id="letter-editor-textarea" class="letter-editor-textarea" rows="5"></textarea>
+              <div class="letter-editor-row">
+                <input id="letter-editor-sign-input" class="letter-editor-sign-input" type="text" maxlength="40" placeholder="落款签名…" />
+                <div class="letter-editor-btns">
+                  <button id="btn-letter-reset" class="wood-btn mini-btn" type="button">恢复默认</button>
+                  <button id="btn-letter-save" class="wood-btn primary-btn mini-btn" type="button">保存信笺</button>
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Three Romantic Surprise Capsules -->
-            <div class="bday-footer-actions">
-              <button id="btn-bday-fireworks" class="bday-action-pill" type="button">
-                🎆 燃放漫天心形烟花
-              </button>
-              <button id="btn-bday-cats-gift" class="bday-action-pill" type="button">
-                🐾 收下双猫满心祝福与礼盒
-              </button>
-              <button id="btn-bday-enter-farm" class="bday-action-pill highlight" type="button">
-                🌸 牵手回到星光花雨农场
-              </button>
-            </div>
-            <div class="bday-sky-hint">✨ 小贴士：轻点背景夜空任意位置，都能亲手为依依绽放一朵专属心形烟花 ✨</div>
-          </article>
+          <div id="letter-status-note" class="letter-ps-note">
+            🕯️ 附注：推开农舍小屋的木门，餐桌上还为你点着三根草莓蛋糕蜡烛，走近吹灭它们，两只小猫咪和漫天花瓣雨会一起出现哦。
+          </div>
+
+          <div class="letter-actions">
+            <button id="btn-letter-claim-gift" class="wood-btn primary-btn" type="button">
+              🐾 收下随信附赠的 12.03 双猫礼盒
+            </button>
+            <button id="btn-letter-done" class="wood-btn" type="button">收好信笺，回到农场</button>
+          </div>
         </div>
       </section>
     </main>
