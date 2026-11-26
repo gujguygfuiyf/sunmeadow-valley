@@ -151,6 +151,35 @@ describe('Birthday companions', () => {
     expect(world.indoorBirthdayGathering).toBe(false);
     expect(world.pets.celebratingOnFarm).toBe(true);
   });
+
+  it('places the flower stand in the cabin, lets Yiyi pick a bouquet, and persists choice & note across reloads', () => {
+    const storage = memorySave();
+    const world = game(storage);
+
+    expect(world.house.isSolid(HOUSE_FIXTURES.flowerStand.x, HOUSE_FIXTURES.flowerStand.y)).toBe(true);
+    expect(world.house.isFlowerStandZone(HOUSE_FIXTURES.flowerStand.x, HOUSE_FIXTURES.flowerStand.y + 1)).toBe(true);
+    expect(world.selectedBouquetId).toBeNull();
+
+    let opened = 0;
+    world.bus.on('ui:openFlowerStand', () => {
+      opened += 1;
+    });
+    world.openFlowerStand();
+    expect(opened).toBe(1);
+
+    expect(world.chooseCabinBouquet('rose_pink', '最喜欢粉粉的玫瑰！')).toBe(true);
+    expect(world.selectedBouquetId).toBe('rose_pink');
+    expect(world.bouquetNote).toBe('最喜欢粉粉的玫瑰！');
+
+    const restored = game(storage);
+    expect(restored.loadGameState()).toBe(true);
+    expect(restored.selectedBouquetId).toBe('rose_pink');
+    expect(restored.bouquetNote).toBe('最喜欢粉粉的玫瑰！');
+
+    restored.resetFarm();
+    expect(restored.selectedBouquetId).toBeNull();
+    expect(restored.bouquetNote).toBe('');
+  });
 });
 
 describe('Saved town position', () => {

@@ -22,6 +22,7 @@ import {
   UPGRADEABLE_TOOL_SPRITES,
 } from '../data/mining';
 import { getNpcDef, NPC_IDS } from '../data/npcs';
+import { BOUQUET_IDS, getBouquetDef, type BouquetId } from '../data/bouquets';
 import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
 import { COOKING_RECIPES } from '../data/recipes';
 import { MAX_HEARTS } from '../systems/NpcSystem';
@@ -36,6 +37,7 @@ type ModalKind =
   | 'villagers'
   | 'pets'
   | 'birthday'
+  | 'flowers'
   | 'backpack'
   | 'chest'
   | 'crafting'
@@ -165,6 +167,12 @@ export class HudController {
   private readonly petsBowlBarEl = mustGetEl('pets-bowl-bar');
   private readonly petsListEl = mustGetEl('pets-list');
 
+  private readonly flowerStandModalEl = mustGetEl('modal-flower-stand');
+  private readonly flowerStandSubtitleEl = mustGetEl('flower-stand-subtitle');
+  private readonly flowerStandGridEl = mustGetEl('flower-stand-grid');
+  private readonly flowerNoteInput = mustGetEl('flower-note-input') as HTMLInputElement;
+  private readonly flowerConfirmBtn = mustGetEl('btn-flower-confirm') as HTMLButtonElement;
+
   private readonly summaryModalEl = mustGetEl('modal-summary');
   private readonly summaryTitleEl = mustGetEl('summary-title');
   private readonly summaryLinesEl = mustGetEl('summary-lines');
@@ -181,6 +189,7 @@ export class HudController {
   private selectedBackpackSlot: number | null = null;
   private robinTab: 'buildings' | 'animals' | 'furniture' = 'buildings';
   private ccTab: 'bundles' | 'encyclopedia' = 'bundles';
+  private draftBouquetId: BouquetId = 'rose_pink';
 
   constructor(world: GameWorld) {
     this.world = world;
@@ -301,6 +310,14 @@ export class HudController {
     this.world.input.setBlocked(true);
   }
 
+  openFlowerStand(): void {
+    this.draftBouquetId = this.world.selectedBouquetId ?? 'rose_pink';
+    this.flowerNoteInput.value = this.world.bouquetNote;
+    this.openStandardModal('flowers', this.flowerStandModalEl, () =>
+      this.renderFlowerStandModal()
+    );
+  }
+
   openHelp(): void {
     this.openStandardModal('help', this.helpModalEl, () => {});
   }
@@ -338,6 +355,7 @@ export class HudController {
       this.tvModalEl,
       this.villagersModalEl,
       this.petsModalEl,
+      this.flowerStandModalEl,
       this.helpModalEl,
     ];
   }
@@ -453,6 +471,7 @@ export class HudController {
       'btn-close-tv',
       'btn-close-villagers',
       'btn-close-pets',
+      'btn-close-flower-stand',
       'btn-close-help',
       'btn-dialogue-close',
     ];
@@ -470,6 +489,12 @@ export class HudController {
       if (kind === 'seeds') this.openShop();
       else if (kind === 'furniture') this.openFurnitureShop();
       else if (kind === 'blacksmith') this.openBlacksmith();
+    });
+
+    this.flowerConfirmBtn.addEventListener('click', () => {
+      if (this.world.chooseCabinBouquet(this.draftBouquetId, this.flowerNoteInput.value)) {
+        this.closeModals();
+      }
     });
 
     mustGetEl('btn-next-morning').addEventListener('click', () => {
@@ -601,6 +626,9 @@ export class HudController {
     bus.on('pet:changed', () => {
       if (this.activeModal === 'pets') this.renderPetsModal();
     });
+    bus.on('bouquet:changed', () => {
+      if (this.activeModal === 'flowers') this.renderFlowerStandModal();
+    });
 
     bus.on('chest:open', () => this.openChestModal());
     bus.on('tv:open', (payload) => this.openTvModal(payload));
@@ -631,6 +659,7 @@ export class HudController {
     bus.on('ui:openMap', () => this.openMap());
     bus.on('ui:openPets', () => this.openPets());
     bus.on('ui:openMailboxLetter', () => this.openBirthday());
+    bus.on('ui:openFlowerStand', () => this.openFlowerStand());
     bus.on('ui:openHelp', () => this.openHelp());
   }
 
@@ -1744,6 +1773,71 @@ export class HudController {
       card.appendChild(body);
       this.petsListEl.appendChild(card);
     }
+  }
+
+  /* =========================================================
+     FARMHOUSE FLOWER BOUQUET STAND PICKER
+     ========================================================= */
+
+  private renderFlowerStandModal(): void {
+    const active = getBouquetDef(this.world.selectedBouquetId);
+    this.flowerStandSubtitleEl.textContent = active
+      ? `当前小屋花瓶里正开着【${active.name}】· 点选任意花束即可随时更换插花`
+      : '挑一束你最喜欢的花插进小屋陶瓷花瓶里，随时都能更换新心情～';
+
+    this.flowerStandGridEl.innerHTML = '';
+    for (const id of BOUQUET_IDS) {
+      const def = getBouquetDef(id);
+      if (!def) continue;
+
+      const isDraft = this.draftBouquetId === id;
+      const isPlaced = this.world.selectedBouquetId === id;
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `flower-card${isDraft ? ' selected' : ''}`;
+
+      const icon = document.createElement('img');
+      icon.className = 'flower-card-icon';
+      icon.src = this.world.atlas.getIconDataUrl(def.spriteKey);
+      icon.alt = def.name;
+      card.appendChild(icon);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'flower-card-name';
+      nameEl.textContent = def.name;
+      card.appendChild(nameEl);
+
+      const tagEl = document.createElement('div');
+      tagEl.className = 'flower-card-tagline';
+      tagEl.textContent = def.tagline;
+      card.appendChild(tagEl);
+
+      const descEl = document.createElement('div');
+      descEl.className = 'flower-card-meaning';
+      descEl.textContent = def.meaning;
+      card.appendChild(descEl);
+
+      if (isPlaced) {
+        const badge = document.createElement('span');
+        badge.className = 'flower-card-badge';
+        badge.textContent = '已插在花瓶里 ✓';
+        card.appendChild(badge);
+      }
+
+      card.addEventListener('click', () => {
+        this.draftBouquetId = id;
+        this.world.audio.play('ui');
+        this.renderFlowerStandModal();
+      });
+
+      this.flowerStandGridEl.appendChild(card);
+    }
+
+    const draftDef = getBouquetDef(this.draftBouquetId);
+    this.flowerConfirmBtn.textContent = draftDef
+      ? `💐 把【${draftDef.name}】插进小屋花瓶`
+      : '💐 插进小屋花瓶';
   }
 
   /* =========================================================

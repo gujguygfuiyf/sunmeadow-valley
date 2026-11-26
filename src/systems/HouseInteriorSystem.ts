@@ -21,6 +21,8 @@ export const HOUSE_FIXTURES = {
   kitchen: { x: 10, y: 2, w: 2, h: 1 },
   /** Cozy candlelit strawberry birthday cake table for Yiyi's 12.03 celebration */
   birthdayTable: { x: 9, y: 6, w: 2, h: 1 },
+  /** Sunlit oak flower stand & ceramic vase where Yiyi can pick her favorite bouquet */
+  flowerStand: { x: 2, y: 7, w: 2, h: 1 },
   /** Exit doormat at south doorway */
   doorExit: { x: 6, y: 9, w: 2, h: 1 },
   /** Spawn position when entering from the farm porch */
@@ -72,6 +74,7 @@ export class HouseInteriorSystem implements CollisionGrid {
     if (isInside(tx, ty, HOUSE_FIXTURES.tv)) return true;
     if (isInside(tx, ty, HOUSE_FIXTURES.kitchen)) return true;
     if (isInside(tx, ty, HOUSE_FIXTURES.birthdayTable)) return true;
+    if (isInside(tx, ty, HOUSE_FIXTURES.flowerStand)) return true;
 
     for (const item of this.placed) {
       const def = getFurnitureDef(item.furnitureId);
@@ -107,6 +110,11 @@ export class HouseInteriorSystem implements CollisionGrid {
   isBirthdayTableZone(tx: number, ty: number): boolean {
     const t = HOUSE_FIXTURES.birthdayTable;
     return tx >= t.x - 1 && tx <= t.x + t.w && ty >= t.y - 1 && ty <= t.y + t.h;
+  }
+
+  isFlowerStandZone(tx: number, ty: number): boolean {
+    const f = HOUSE_FIXTURES.flowerStand;
+    return tx >= f.x - 1 && tx <= f.x + f.w && ty >= f.y - 1 && ty <= f.y + f.h;
   }
 
   isDoorExitTile(tx: number, ty: number): boolean {
@@ -149,6 +157,7 @@ export class HouseInteriorSystem implements CollisionGrid {
         if (isInside(cx, cy, HOUSE_FIXTURES.tv)) return false;
         if (isInside(cx, cy, HOUSE_FIXTURES.kitchen)) return false;
         if (isInside(cx, cy, HOUSE_FIXTURES.birthdayTable)) return false;
+        if (isInside(cx, cy, HOUSE_FIXTURES.flowerStand)) return false;
         if (isInside(cx, cy, HOUSE_FIXTURES.doorExit)) return false;
 
         if (!def.walkable && playerTileX === cx && playerTileY === cy) {

@@ -1,4 +1,5 @@
 import type { GameWorld } from '../core/GameWorld';
+import { getBouquetDef } from '../data/bouquets';
 import { FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig';
 import { HOUSE_COLS, HOUSE_ROWS, HOUSE_FIXTURES } from '../systems/HouseInteriorSystem';
 import { MINE_COLS, MINE_ROWS } from '../systems/MineSystem';
@@ -195,6 +196,14 @@ export class MinimapRenderer {
       HOUSE_FIXTURES.birthdayTable.y * sy,
       HOUSE_FIXTURES.birthdayTable.w * sx,
       HOUSE_FIXTURES.birthdayTable.h * sy
+    );
+    const activeBouquet = getBouquetDef(world.selectedBouquetId);
+    ctx.fillStyle = activeBouquet ? activeBouquet.accentColor : '#f2e4cc';
+    ctx.fillRect(
+      HOUSE_FIXTURES.flowerStand.x * sx,
+      HOUSE_FIXTURES.flowerStand.y * sy,
+      HOUSE_FIXTURES.flowerStand.w * sx,
+      HOUSE_FIXTURES.flowerStand.h * sy
     );
 
     // Companion cats indoors

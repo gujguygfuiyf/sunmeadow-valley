@@ -530,6 +530,40 @@
           </div>
         </div>
       </section>
+
+      <!-- Native Stardew-style Farmhouse Flower Bouquet Stand Modal -->
+      <section
+        id="modal-flower-stand"
+        class="modal-backdrop hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="flower-stand-title"
+      >
+        <div class="wood-panel modal-card wide-modal">
+          <div class="modal-header">
+            <div>
+              <h2 id="flower-stand-title" class="modal-title">💐 农舍鲜花小角 · 挑选小屋插花</h2>
+              <p id="flower-stand-subtitle" class="modal-subtitle">挑一束你最喜欢的花插进小屋陶瓷花瓶里，随时都能更换新心情～</p>
+            </div>
+            <button id="btn-close-flower-stand" class="wood-btn close-btn" type="button">✕</button>
+          </div>
+
+          <div id="flower-stand-grid" class="flower-stand-grid"></div>
+
+          <div class="flower-note-bar">
+            <input
+              id="flower-note-input"
+              class="flower-note-input"
+              type="text"
+              maxlength="60"
+              placeholder="顺手夹一张花签小纸条（选填，例如：最喜欢粉粉的花）…"
+            />
+            <button id="btn-flower-confirm" class="wood-btn primary-btn" type="button">
+              💐 插进小屋花瓶
+            </button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script type="module" src="/src/main.ts"></script>

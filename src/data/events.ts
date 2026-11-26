@@ -82,6 +82,7 @@ export type GameEvents = {
   'bundles:changed': void;
   'livestock:changed': void;
   'pet:changed': void;
+  'bouquet:changed': void;
   'mine:changed': { floor: number; deepestFloor: number; slimesRemaining: number };
   'fishing:stateChanged': { active: boolean };
   'chest:open': { machineUid: string };
@@ -103,5 +104,6 @@ export type GameEvents = {
   'ui:openMap': void;
   'ui:openPets': void;
   'ui:openMailboxLetter': void;
+  'ui:openFlowerStand': void;
   'ui:openHelp': void;
 };

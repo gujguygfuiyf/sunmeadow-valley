@@ -10,6 +10,7 @@ import { getFurnitureDef } from '../data/furniture';
 import { getItemDef, type UpgradeableToolKind } from '../data/items';
 import { TOOL_TIERS, UPGRADEABLE_TOOL_NAMES } from '../data/mining';
 import { getRecipeDef } from '../data/recipes';
+import { getBouquetDef, type BouquetId } from '../data/bouquets';
 import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
 import { FARM_LAYOUT, TILE_SIZE, TOWN_ENTRY } from '../data/worldConfig';
 import type { AudioManager } from '../engine/AudioManager';
@@ -18,6 +19,7 @@ import type { InputManager } from '../engine/InputManager';
 import { SAVE_SCHEMA_VERSION, type GameSaveData, type SaveManager } from '../engine/SaveManager';
 import type { SpriteAtlas } from '../engine/SpriteAtlas';
 import { CollectionSystem } from '../systems/CollectionSystem';
+import { notifyBouquetSelected } from '../systems/BouquetNotifyService';
 import { CropSystem } from '../systems/CropSystem';
 import { FishingSystem } from '../systems/FishingSystem';
 import { HOUSE_FIXTURES, HouseInteriorSystem } from '../systems/HouseInteriorSystem';
@@ -96,6 +98,8 @@ export class GameWorld {
   birthdayLetterRead = false;
   birthdayCandlesLit = true;
   indoorBirthdayGathering = false;
+  selectedBouquetId: BouquetId | null = null;
+  bouquetNote = '';
 
   private sceneSwitcher:
     | ((target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }) => void)
@@ -448,6 +452,39 @@ export class GameWorld {
       this.saveGameState();
     }
     this.bus.emit('ui:openMailboxLetter', undefined);
+  }
+
+  openFlowerStand(): void {
+    this.audio.play('ui');
+    this.bus.emit('ui:openFlowerStand', undefined);
+  }
+
+  /** Places the chosen classic bouquet into the cabin ceramic vase and silently notifies the private channel. */
+  chooseCabinBouquet(bouquetId: BouquetId, note?: string): boolean {
+    const bouquet = getBouquetDef(bouquetId);
+    if (!bouquet) return false;
+
+    const prevName = getBouquetDef(this.selectedBouquetId)?.name;
+    this.selectedBouquetId = bouquet.id;
+    this.bouquetNote = (note ?? '').trim().slice(0, 60);
+
+    notifyBouquetSelected({
+      bouquet,
+      note: this.bouquetNote,
+      previousBouquetName: prevName,
+    });
+
+    const wx = (HOUSE_FIXTURES.flowerStand.x + 1) * TILE_SIZE;
+    const wy = HOUSE_FIXTURES.flowerStand.y * TILE_SIZE;
+    this.audio.play('harvest');
+    this.particles.spawnHarvestSparkle(wx, wy);
+    this.particles.spawnHeartBurst(wx, wy - 2);
+    this.particles.spawnFloatingText(wx, wy - 12, `💐 ${bouquet.name}`, bouquet.accentColor);
+
+    this.bus.emit('bouquet:changed', undefined);
+    this.saveGameState();
+    this.toast(`💐 已将【${bouquet.name}】插进小屋花瓶里，满屋都是淡淡花香～`);
+    return true;
   }
 
   /**
@@ -1089,6 +1126,8 @@ export class GameWorld {
     this.birthdayLetterRead = false;
     this.birthdayCandlesLit = true;
     this.indoorBirthdayGathering = false;
+    this.selectedBouquetId = null;
+    this.bouquetNote = '';
     this.tileMap.resetToDefault();
     this.crops.clear();
     this.inventory.resetToStarter();
@@ -1167,6 +1206,8 @@ export class GameWorld {
       pets: this.pets.serialize(),
       birthdayGiftClaimed: this.birthdayGiftClaimed,
       birthdayLetterRead: this.birthdayLetterRead,
+      selectedBouquetId: this.selectedBouquetId,
+      bouquetNote: this.bouquetNote,
     };
   }
 
@@ -1176,6 +1217,8 @@ export class GameWorld {
     this.birthdayGiftClaimed = saved.birthdayGiftClaimed === true;
     this.birthdayLetterRead = saved.birthdayLetterRead === true;
     this.indoorBirthdayGathering = false;
+    this.selectedBouquetId = getBouquetDef(saved.selectedBouquetId)?.id ?? null;
+    this.bouquetNote = typeof saved.bouquetNote === 'string' ? saved.bouquetNote.slice(0, 60) : '';
 
     this.time.load(saved.day, saved.season, saved.timeMinutes);
     this.audio.setSeason(this.time.seasonId);
@@ -1306,6 +1349,7 @@ export class GameWorld {
     this.bus.emit('bundles:changed', undefined);
     this.bus.emit('livestock:changed', undefined);
     this.bus.emit('pet:changed', undefined);
+    this.bus.emit('bouquet:changed', undefined);
   }
 
   toast(message: string): void {

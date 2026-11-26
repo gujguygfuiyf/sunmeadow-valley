@@ -1,6 +1,7 @@
 import { bakeInteriorAndTownSprites } from './PixelArtExpansion';
 import { bakeFullExpansionSprites } from './PixelArtFullExpansion';
 import { bakePetSprites } from './PixelArtPets';
+import { bakeBouquetSprites } from './PixelArtBouquets';
 
 /**
  * SpriteAtlas — Unified 2D pixel-art sprite registry.
@@ -86,6 +87,7 @@ export class SpriteAtlas {
     bakeInteriorAndTownSprites((key, canvas) => this.registerCanvas(key, canvas));
     bakeFullExpansionSprites((key, canvas) => this.registerCanvas(key, canvas));
     bakePetSprites((key, canvas) => this.registerCanvas(key, canvas));
+    bakeBouquetSprites((key, canvas) => this.registerCanvas(key, canvas));
   }
 
   /* =========================================================

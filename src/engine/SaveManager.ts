@@ -3,6 +3,7 @@ import type { SceneId } from '../data/events';
 import type { WeatherKind } from '../data/fish';
 import type { PlacedFurniture } from '../data/furniture';
 import type { MachineKind, UpgradeableToolKind } from '../data/items';
+import type { BouquetId } from '../data/bouquets';
 import type { CatBreedId } from '../data/pets';
 
 export const SAVE_SCHEMA_VERSION = 3;
@@ -141,6 +142,8 @@ export interface GameSaveData {
   pets?: SerializedPetState | null;
   birthdayGiftClaimed?: boolean;
   birthdayLetterRead?: boolean;
+  selectedBouquetId?: BouquetId | null;
+  bouquetNote?: string;
 }
 
 export interface StorageBackend {

@@ -1,4 +1,5 @@
 import type { GameWorld } from '../core/GameWorld';
+import { getBouquetDef } from '../data/bouquets';
 import { getFurnitureDef } from '../data/furniture';
 import { DEFAULT_CAMERA_ZOOM, FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig';
 import { Camera } from '../engine/Camera';
@@ -143,6 +144,11 @@ export class HouseInteriorScene implements Scene {
       return;
     }
 
+    if (this.world.house.isFlowerStandZone(tx, ty)) {
+      this.world.openFlowerStand();
+      return;
+    }
+
     if (this.world.house.isTvZone(tx, ty)) {
       this.world.openTvBroadcast();
       return;
@@ -191,6 +197,8 @@ export class HouseInteriorScene implements Scene {
 
     if (this.world.house.isBirthdayTableZone(tx, ty)) {
       this.world.interactWithBirthdayCake();
+    } else if (this.world.house.isFlowerStandZone(tx, ty)) {
+      this.world.openFlowerStand();
     } else if (this.world.house.isTvZone(tx, ty)) {
       this.world.openTvBroadcast();
     } else if (this.world.house.isKitchenZone(tx, ty)) {
@@ -226,6 +234,11 @@ export class HouseInteriorScene implements Scene {
 
     if (this.world.house.isBirthdayTableZone(px, py)) {
       this.world.interactWithBirthdayCake();
+      return;
+    }
+
+    if (this.world.house.isFlowerStandZone(px, py)) {
+      this.world.openFlowerStand();
       return;
     }
 
@@ -318,6 +331,11 @@ export class HouseInteriorScene implements Scene {
       prompt = this.world.birthdayCandlesLit
         ? '草莓生日蛋糕：按 E 或点击闭眼许愿，吹灭 12.03 生日蜡烛'
         : '草莓生日蛋糕：按 E 重燃烛光再听八音盒生日歌，或走出农舍看漫天花瓣雨';
+    } else if (this.world.house.isFlowerStandZone(px, py)) {
+      const bouquet = getBouquetDef(this.world.selectedBouquetId);
+      prompt = bouquet
+        ? `木质鲜花台：花瓶里正开着【${bouquet.name}】· 按 E 或点击可更换花束`
+        : '木质鲜花台：按 E 或点击挑一束喜欢的花，插进小屋花瓶里';
     } else if (this.world.house.isTvZone(px, py)) {
       prompt = '按 E 或点击复古电视：收看【明日天气预报】与【农耕小贴士】';
     } else if (this.world.house.isKitchenZone(px, py)) {
@@ -487,6 +505,46 @@ export class HouseInteriorScene implements Scene {
             c.arc(cakeDrawX + 16, cakeDrawY + 4, 20, 0, Math.PI * 2);
             c.fill();
             c.restore();
+          }
+        },
+      });
+    }
+
+    // Oak Flower Bouquet Stand & Ceramic Vase (displays Yiyi's chosen classic bouquet!)
+    const activeBouquet = getBouquetDef(this.world.selectedBouquetId);
+    const standSpriteKey = activeBouquet
+      ? activeBouquet.standSpriteKey
+      : 'interior_flower_stand_empty';
+    const standSprite = this.world.atlas.get(standSpriteKey);
+    if (standSprite) {
+      const standDrawX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE;
+      const standDrawY = (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE - standSprite.height + 2;
+      renderables.push({
+        sortY: (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE,
+        draw: (c) => {
+          c.drawImage(standSprite, standDrawX, standDrawY);
+          if (activeBouquet) {
+            // Subtle blooming sparkle twinkle over the chosen bouquet
+            const shimmer = Math.sin(this.elapsedTime * 3.5);
+            if (shimmer > 0.35) {
+              const sy = standDrawY + 2 - Math.round(shimmer * 2);
+              c.fillStyle = '#fff9d6';
+              c.fillRect(standDrawX + 11, sy, 1, 1);
+              c.fillRect(standDrawX + 20, sy + 2, 1, 1);
+            }
+          } else {
+            // Gentle floating blossom hint bubble over empty vase so Yiyi spots it naturally
+            const bob = Math.round(Math.sin(this.elapsedTime * 3.2) * 1.4);
+            const bx = standDrawX + 12;
+            const by = standDrawY + 1 + bob;
+            c.fillStyle = '#3b1f12';
+            c.fillRect(bx - 1, by - 1, 9, 8);
+            c.fillStyle = '#fff9ee';
+            c.fillRect(bx, by, 7, 6);
+            c.fillStyle = '#ff8bb3';
+            c.fillRect(bx + 2, by + 1, 3, 2);
+            c.fillStyle = '#5da83e';
+            c.fillRect(bx + 3, by + 3, 1, 2);
           }
         },
       });
