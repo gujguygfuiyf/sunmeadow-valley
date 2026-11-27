@@ -167,14 +167,14 @@ describe('Birthday companions', () => {
     world.openFlowerStand();
     expect(opened).toBe(1);
 
-    expect(world.chooseCabinBouquet('rose_pink', '最喜欢粉粉的玫瑰！')).toBe(true);
-    expect(world.selectedBouquetId).toBe('rose_pink');
-    expect(world.bouquetNote).toBe('最喜欢粉粉的玫瑰！');
+    expect(world.chooseCabinBouquet('rose_lychee_orchid', '最喜欢带蝴蝶兰的粉荔枝！')).toBe(true);
+    expect(world.selectedBouquetId).toBe('rose_lychee_orchid');
+    expect(world.bouquetNote).toBe('最喜欢带蝴蝶兰的粉荔枝！');
 
     const restored = game(storage);
     expect(restored.loadGameState()).toBe(true);
-    expect(restored.selectedBouquetId).toBe('rose_pink');
-    expect(restored.bouquetNote).toBe('最喜欢粉粉的玫瑰！');
+    expect(restored.selectedBouquetId).toBe('rose_lychee_orchid');
+    expect(restored.bouquetNote).toBe('最喜欢带蝴蝶兰的粉荔枝！');
 
     restored.resetFarm();
     expect(restored.selectedBouquetId).toBeNull();

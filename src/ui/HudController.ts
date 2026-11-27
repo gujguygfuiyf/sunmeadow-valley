@@ -22,7 +22,12 @@ import {
   UPGRADEABLE_TOOL_SPRITES,
 } from '../data/mining';
 import { getNpcDef, NPC_IDS } from '../data/npcs';
-import { BOUQUET_IDS, getBouquetDef, type BouquetId } from '../data/bouquets';
+import {
+  BOUQUET_IDS,
+  getBouquetDef,
+  getBouquetPhotoUrl,
+  type BouquetId,
+} from '../data/bouquets';
 import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
 import { COOKING_RECIPES } from '../data/recipes';
 import { MAX_HEARTS } from '../systems/NpcSystem';
@@ -169,6 +174,7 @@ export class HudController {
 
   private readonly flowerStandModalEl = mustGetEl('modal-flower-stand');
   private readonly flowerStandSubtitleEl = mustGetEl('flower-stand-subtitle');
+  private readonly flowerStandPreviewEl = mustGetEl('flower-stand-preview');
   private readonly flowerStandGridEl = mustGetEl('flower-stand-grid');
   private readonly flowerNoteInput = mustGetEl('flower-note-input') as HTMLInputElement;
   private readonly flowerConfirmBtn = mustGetEl('btn-flower-confirm') as HTMLButtonElement;
@@ -189,7 +195,7 @@ export class HudController {
   private selectedBackpackSlot: number | null = null;
   private robinTab: 'buildings' | 'animals' | 'furniture' = 'buildings';
   private ccTab: 'bundles' | 'encyclopedia' = 'bundles';
-  private draftBouquetId: BouquetId = 'rose_pink';
+  private draftBouquetId: BouquetId = 'rose_lychee_balloon';
 
   constructor(world: GameWorld) {
     this.world = world;
@@ -311,7 +317,8 @@ export class HudController {
   }
 
   openFlowerStand(): void {
-    this.draftBouquetId = this.world.selectedBouquetId ?? 'rose_pink';
+    this.draftBouquetId =
+      getBouquetDef(this.world.selectedBouquetId)?.id ?? 'rose_lychee_balloon';
     this.flowerNoteInput.value = this.world.bouquetNote;
     this.openStandardModal('flowers', this.flowerStandModalEl, () =>
       this.renderFlowerStandModal()
@@ -1782,26 +1789,88 @@ export class HudController {
   private renderFlowerStandModal(): void {
     const active = getBouquetDef(this.world.selectedBouquetId);
     this.flowerStandSubtitleEl.textContent = active
-      ? `当前小屋花瓶里正开着【${active.name}】· 点选任意花束即可随时更换插花`
+      ? `当前小屋花瓶里正开着【${active.name}】· 点选任意花束可放大查看并随时更换插花`
       : '挑一束你最喜欢的花插进小屋陶瓷花瓶里，随时都能更换新心情～';
 
+    const draftDef = getBouquetDef(this.draftBouquetId) ?? getBouquetDef(BOUQUET_IDS[0]);
+
+    // Enlarged high-clarity preview banner for the currently highlighted bouquet
+    this.flowerStandPreviewEl.innerHTML = '';
+    if (draftDef) {
+      const frame = document.createElement('div');
+      frame.className = 'flower-preview-photo-frame';
+      const bigImg = document.createElement('img');
+      bigImg.className = 'flower-preview-photo';
+      bigImg.src = getBouquetPhotoUrl(draftDef.id);
+      bigImg.alt = draftDef.name;
+      bigImg.onerror = () => {
+        bigImg.onerror = null;
+        bigImg.src = this.world.atlas.getIconDataUrl(draftDef.spriteKey);
+      };
+      frame.appendChild(bigImg);
+      this.flowerStandPreviewEl.appendChild(frame);
+
+      const info = document.createElement('div');
+      info.className = 'flower-preview-info';
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'flower-preview-title-row';
+
+      const title = document.createElement('div');
+      title.className = 'flower-preview-name';
+      title.textContent = draftDef.name;
+      titleRow.appendChild(title);
+
+      const tag = document.createElement('span');
+      tag.className = 'flower-preview-tagline';
+      tag.textContent = draftDef.tagline;
+      titleRow.appendChild(tag);
+
+      info.appendChild(titleRow);
+
+      const meaning = document.createElement('div');
+      meaning.className = 'flower-preview-meaning';
+      meaning.textContent = draftDef.meaning;
+      info.appendChild(meaning);
+
+      const hint = document.createElement('div');
+      hint.className = 'flower-preview-hint';
+      hint.textContent =
+        active?.id === draftDef.id
+          ? '✨ 这束花目前正绽放在小屋陶瓷花瓶里；你也可以换一束新的，或改写花签纸条。'
+          : '💡 点选下方任意一束即可切换大图预览，选好后点击右下角按钮摆进小屋花瓶。';
+      info.appendChild(hint);
+
+      this.flowerStandPreviewEl.appendChild(info);
+    }
+
+    const prevScrollTop = this.flowerStandGridEl.scrollTop;
     this.flowerStandGridEl.innerHTML = '';
     for (const id of BOUQUET_IDS) {
       const def = getBouquetDef(id);
       if (!def) continue;
 
-      const isDraft = this.draftBouquetId === id;
-      const isPlaced = this.world.selectedBouquetId === id;
+      const isDraft = draftDef?.id === id;
+      const isPlaced = active?.id === id;
 
       const card = document.createElement('button');
       card.type = 'button';
       card.className = `flower-card${isDraft ? ' selected' : ''}`;
 
-      const icon = document.createElement('img');
-      icon.className = 'flower-card-icon';
-      icon.src = this.world.atlas.getIconDataUrl(def.spriteKey);
-      icon.alt = def.name;
-      card.appendChild(icon);
+      const photoWrap = document.createElement('div');
+      photoWrap.className = 'flower-card-photo-wrap';
+
+      const photo = document.createElement('img');
+      photo.className = 'flower-card-photo';
+      photo.src = getBouquetPhotoUrl(def.id);
+      photo.alt = def.name;
+      photo.loading = 'lazy';
+      photo.onerror = () => {
+        photo.onerror = null;
+        photo.src = this.world.atlas.getIconDataUrl(def.spriteKey);
+      };
+      photoWrap.appendChild(photo);
+      card.appendChild(photoWrap);
 
       const nameEl = document.createElement('div');
       nameEl.className = 'flower-card-name';
@@ -1812,11 +1881,6 @@ export class HudController {
       tagEl.className = 'flower-card-tagline';
       tagEl.textContent = def.tagline;
       card.appendChild(tagEl);
-
-      const descEl = document.createElement('div');
-      descEl.className = 'flower-card-meaning';
-      descEl.textContent = def.meaning;
-      card.appendChild(descEl);
 
       if (isPlaced) {
         const badge = document.createElement('span');
@@ -1833,8 +1897,8 @@ export class HudController {
 
       this.flowerStandGridEl.appendChild(card);
     }
+    this.flowerStandGridEl.scrollTop = prevScrollTop;
 
-    const draftDef = getBouquetDef(this.draftBouquetId);
     this.flowerConfirmBtn.textContent = draftDef
       ? `💐 把【${draftDef.name}】插进小屋花瓶`
       : '💐 插进小屋花瓶';

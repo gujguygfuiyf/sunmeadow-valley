@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sampleClearingRaw from '../../../public/maps/sample_clearing.tmj?raw';
 import { ANIMAL_CATALOG } from '../../data/animals';
+import { BOUQUET_CATALOG, BOUQUET_IDS, getBouquetDef, getBouquetPhotoUrl } from '../../data/bouquets';
 import { COLLECTION_GROUPS, COMMUNITY_BUNDLES } from '../../data/bundles';
 import { CRAFTING_RECIPES } from '../../data/crafting';
 import { CROP_REGISTRY } from '../../data/crops';
@@ -86,6 +87,19 @@ describe('Data Catalog Referential Integrity Audit', () => {
         }
       }
     }
+  });
+
+  it('ensures all 16 farmhouse bouquets have valid catalog entries, florist SKUs, photo URLs, and legacy save compatibility', () => {
+    expect(BOUQUET_IDS).toHaveLength(16);
+    for (const id of BOUQUET_IDS) {
+      const def = BOUQUET_CATALOG[id];
+      expect(def, `Missing bouquet ${id}`).toBeDefined();
+      expect(def.floristSku.trim().length).toBeGreaterThan(0);
+      expect(getBouquetPhotoUrl(id)).toMatch(new RegExp(`assets/bouquets/${id}\\.jpg$`));
+    }
+    expect(getBouquetDef('rose_red')?.id).toBe('rose_red_white');
+    expect(getBouquetDef('rose_pink')?.id).toBe('rose_lychee_balloon');
+    expect(getBouquetDef('hydrangea_blue')?.id).toBe('rose_ice_blue');
   });
 
   it('parses the bundled public/maps/sample_clearing.tmj Tiled map cleanly', () => {

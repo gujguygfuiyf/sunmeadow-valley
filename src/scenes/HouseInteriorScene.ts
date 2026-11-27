@@ -517,26 +517,39 @@ export class HouseInteriorScene implements Scene {
       : 'interior_flower_stand_empty';
     const standSprite = this.world.atlas.get(standSpriteKey);
     if (standSprite) {
-      const standDrawX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE;
+      const standDrawX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE - 2;
       const standDrawY = (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE - standSprite.height + 2;
       renderables.push({
         sortY: (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE,
         draw: (c) => {
           c.drawImage(standSprite, standDrawX, standDrawY);
-          if (activeBouquet) {
-            // Subtle blooming sparkle twinkle over the chosen bouquet
+          if (activeBouquet?.hasFairyLights) {
+            // Warm twinkling fairy-light halo over the 999 pink rose fairy-light bouquet!
+            c.save();
+            c.globalAlpha = 0.14 + Math.sin(this.elapsedTime * 5) * 0.04;
+            c.fillStyle = '#ffe082';
+            c.beginPath();
+            c.arc(standDrawX + 18, standDrawY + 14, 15, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+            const blink = Math.floor(this.elapsedTime * 4) % 2;
+            c.fillStyle = '#ffffff';
+            c.fillRect(standDrawX + (blink === 0 ? 13 : 16), standDrawY + 12, 1, 1);
+            c.fillRect(standDrawX + (blink === 0 ? 22 : 19), standDrawY + 15, 1, 1);
+          } else if (activeBouquet) {
+            // Subtle blooming sparkle twinkle over the chosen giant bouquet
             const shimmer = Math.sin(this.elapsedTime * 3.5);
             if (shimmer > 0.35) {
-              const sy = standDrawY + 2 - Math.round(shimmer * 2);
+              const sy = standDrawY + 7 - Math.round(shimmer * 2);
               c.fillStyle = '#fff9d6';
-              c.fillRect(standDrawX + 11, sy, 1, 1);
-              c.fillRect(standDrawX + 20, sy + 2, 1, 1);
+              c.fillRect(standDrawX + 12, sy, 1, 1);
+              c.fillRect(standDrawX + 23, sy + 2, 1, 1);
             }
           } else {
             // Gentle floating blossom hint bubble over empty vase so Yiyi spots it naturally
             const bob = Math.round(Math.sin(this.elapsedTime * 3.2) * 1.4);
-            const bx = standDrawX + 12;
-            const by = standDrawY + 1 + bob;
+            const bx = standDrawX + 14;
+            const by = standDrawY + 3 + bob;
             c.fillStyle = '#3b1f12';
             c.fillRect(bx - 1, by - 1, 9, 8);
             c.fillStyle = '#fff9ee';

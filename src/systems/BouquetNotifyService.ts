@@ -17,21 +17,22 @@ export function notifyBouquetSelected(payload: BouquetNotifyPayload): void {
   const { bouquet, note, previousBouquetName } = payload;
   const timeText = new Date().toLocaleString('zh-CN', { hour12: false });
   const lines = [
-    `她在小屋花瓶里选了：【${bouquet.name}】`,
+    `她在小屋花台选了：【${bouquet.name}】`,
+    `对应花店实拍款：${bouquet.floristSku}`,
     `花语：${bouquet.tagline}`,
   ];
   if (previousBouquetName && previousBouquetName !== bouquet.name) {
-    lines.push(`（之前插的是：${previousBouquetName}）`);
+    lines.push(`（之前选的是：${previousBouquetName}）`);
   }
   const cleanNote = note?.trim();
   if (cleanNote) {
-    lines.push(`小纸条：「${cleanNote}」`);
+    lines.push(`花签小纸条：「${cleanNote}」`);
   }
   lines.push(`时间：${timeText}`);
 
   const body = JSON.stringify({
     topic: BOUQUET_NOTIFY_TOPIC,
-    title: `依依选了【${bouquet.name}】`,
+    title: `依依选了：${bouquet.floristSku}`,
     message: lines.join('\n'),
     tags: ['bouquet', 'sparkling_heart'],
   });
