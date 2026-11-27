@@ -8,6 +8,7 @@ import { GameLoop } from './engine/GameLoop';
 import { InputManager } from './engine/InputManager';
 import { SaveManager } from './engine/SaveManager';
 import { loadRealCatSpriteAssets } from './engine/PixelArtPets';
+import { loadGeneratedBouquetSprites } from './engine/PixelArtBouquets';
 import { SpriteAtlas } from './engine/SpriteAtlas';
 import { FarmScene } from './scenes/FarmScene';
 import { HouseInteriorScene } from './scenes/HouseInteriorScene';
@@ -148,6 +149,9 @@ function bootstrap(): void {
   void loadRealCatSpriteAssets(atlas).then(() => {
     bus.emit('pet:changed', undefined);
   });
+
+  // Load all 16 high-detail AI-generated cozy pixel-art bouquet sprites for the cabin stand
+  void loadGeneratedBouquetSprites(atlas);
 
   if (loaded) {
     world.toast(`欢迎回到晨露谷！已读取${world.time.season}第 ${world.time.day} 天存档`);

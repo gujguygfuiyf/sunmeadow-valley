@@ -370,3 +370,16 @@ export function getBouquetPhotoUrl(id: BouquetId): string {
   const base = (import.meta.env?.BASE_URL ?? './').replace(/\/?$/, '/');
   return `${base}assets/bouquets/${id}.jpg`;
 }
+
+/**
+ * Returns the relative/base-aware URL for the AI-generated cozy pixel-art transparent PNG
+ * bouquet sprite bundled in `public/assets/bouquets/sprites/<id>.png`.
+ */
+export function getBouquetSpriteUrl(id: BouquetId): string {
+  const base = (import.meta.env?.BASE_URL ?? './').replace(/\/?$/, '/');
+  return `${base}assets/bouquets/sprites/${id}.png`;
+}
+
+export function getBouquetArtSpriteKey(id: BouquetId): string {
+  return `bouquet_art_${id}`;
+}

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import sampleClearingRaw from '../../../public/maps/sample_clearing.tmj?raw';
 import { ANIMAL_CATALOG } from '../../data/animals';
-import { BOUQUET_CATALOG, BOUQUET_IDS, getBouquetDef, getBouquetPhotoUrl } from '../../data/bouquets';
+import {
+  BOUQUET_CATALOG,
+  BOUQUET_IDS,
+  getBouquetDef,
+  getBouquetPhotoUrl,
+  getBouquetSpriteUrl,
+} from '../../data/bouquets';
 import { COLLECTION_GROUPS, COMMUNITY_BUNDLES } from '../../data/bundles';
 import { CRAFTING_RECIPES } from '../../data/crafting';
 import { CROP_REGISTRY } from '../../data/crops';
@@ -96,6 +102,7 @@ describe('Data Catalog Referential Integrity Audit', () => {
       expect(def, `Missing bouquet ${id}`).toBeDefined();
       expect(def.floristSku.trim().length).toBeGreaterThan(0);
       expect(getBouquetPhotoUrl(id)).toMatch(new RegExp(`assets/bouquets/${id}\\.jpg$`));
+      expect(getBouquetSpriteUrl(id)).toMatch(new RegExp(`assets/bouquets/sprites/${id}\\.png$`));
     }
     expect(getBouquetDef('rose_red')?.id).toBe('rose_red_white');
     expect(getBouquetDef('rose_pink')?.id).toBe('rose_lychee_balloon');

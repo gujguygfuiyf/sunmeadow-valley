@@ -26,6 +26,7 @@ import {
   BOUQUET_IDS,
   getBouquetDef,
   getBouquetPhotoUrl,
+  getBouquetSpriteUrl,
   type BouquetId,
 } from '../data/bouquets';
 import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
@@ -1842,6 +1843,24 @@ export class HudController {
       info.appendChild(hint);
 
       this.flowerStandPreviewEl.appendChild(info);
+
+      // Right mini wood-floor preview showing the exact AI-generated cozy pixel-art cabin sprite!
+      const cabinCard = document.createElement('div');
+      cabinCard.className = 'flower-preview-cabin-box';
+      const cabinImg = document.createElement('img');
+      cabinImg.className = 'flower-preview-cabin-img';
+      cabinImg.src = getBouquetSpriteUrl(draftDef.id);
+      cabinImg.alt = `${draftDef.name} 小屋效果`;
+      cabinImg.onerror = () => {
+        cabinImg.onerror = null;
+        cabinImg.src = this.world.atlas.getIconDataUrl(draftDef.spriteKey);
+      };
+      cabinCard.appendChild(cabinImg);
+      const cabinCap = document.createElement('span');
+      cabinCap.className = 'flower-preview-cabin-label';
+      cabinCap.textContent = '小屋摆放预览';
+      cabinCard.appendChild(cabinCap);
+      this.flowerStandPreviewEl.appendChild(cabinCard);
     }
 
     const prevScrollTop = this.flowerStandGridEl.scrollTop;

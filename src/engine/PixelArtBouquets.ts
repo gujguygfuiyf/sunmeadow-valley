@@ -1,11 +1,14 @@
 import {
   BOUQUET_CATALOG,
   BOUQUET_IDS,
+  getBouquetArtSpriteKey,
+  getBouquetSpriteUrl,
   type BouquetBalloonTheme,
   type BouquetDef,
   type BouquetWrapTheme,
 } from '../data/bouquets';
 import type { RegisterSpriteFn } from './PixelArtExpansion';
+import type { SpriteAtlas } from './SpriteAtlas';
 
 interface WrapPalette {
   dark: string;
@@ -72,6 +75,60 @@ export function bakeBouquetSprites(register: RegisterSpriteFn): void {
     register(def.standSpriteKey, drawIndoorGiantStand(def));
   }
   register('interior_flower_stand_empty', drawEmptyIndoorStand());
+  register('interior_flower_pedestal', drawOakFloralPedestal());
+}
+
+/**
+ * Asynchronously loads all 16 high-detail AI-generated Stardew-style transparent bouquet PNGs
+ * into the SpriteAtlas so the farmhouse flower stand displays crisp bespoke artwork.
+ */
+export async function loadGeneratedBouquetSprites(atlas: SpriteAtlas): Promise<void> {
+  if (typeof Image === 'undefined') return;
+  await Promise.all(
+    BOUQUET_IDS.map(async (id) => {
+      try {
+        await atlas.loadImage(getBouquetArtSpriteKey(id), getBouquetSpriteUrl(id));
+      } catch {
+        // Keep synchronous procedural fallback if offline/headless
+      }
+    })
+  );
+}
+
+/** Cozy lace-draped oak display table supporting the high-detail bouquet sprite indoors. */
+function drawOakFloralPedestal(): HTMLCanvasElement {
+  const c = createCanvas(36, 16);
+  const ctx = getCtx(c);
+
+  // Soft warm ground shadow under the oak stand
+  fillEllipse(ctx, 18, 14, 16, 2, 'rgba(42, 24, 14, 0.30)');
+
+  // Four sturdy oak legs
+  fillRect(ctx, 4, 8, 3, 6, '#5c3119');
+  fillRect(ctx, 5, 8, 1, 5, '#8c532c');
+  fillRect(ctx, 29, 8, 3, 6, '#5c3119');
+  fillRect(ctx, 30, 8, 1, 5, '#8c532c');
+
+  // Lower shelf crossbar
+  fillRect(ctx, 6, 11, 24, 2, '#6e3d20');
+  fillRect(ctx, 6, 11, 24, 1, '#9e6238');
+
+  // Wide oak tabletop
+  fillRect(ctx, 2, 2, 32, 7, '#4a2512');
+  fillRect(ctx, 3, 3, 30, 5, '#b87642');
+  fillRect(ctx, 3, 3, 30, 2, '#d6975e');
+  fillRect(ctx, 3, 7, 30, 1, '#7a4422');
+
+  // Cream lace runner draped neatly over the center
+  fillRect(ctx, 9, 3, 18, 6, '#f7ebd6');
+  fillRect(ctx, 10, 3, 16, 4, '#fffaf0');
+  for (let x = 9; x <= 25; x += 2) {
+    px(ctx, x, 9, '#ebd7b7');
+  }
+  // Delicate rose-gold trim line along the lace runner
+  fillRect(ctx, 10, 7, 16, 1, '#e8a5b5');
+
+  return c;
 }
 
 /* =========================================================

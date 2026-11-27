@@ -1,5 +1,5 @@
 import type { GameWorld } from '../core/GameWorld';
-import { getBouquetDef } from '../data/bouquets';
+import { getBouquetArtSpriteKey, getBouquetDef } from '../data/bouquets';
 import { getFurnitureDef } from '../data/furniture';
 import { DEFAULT_CAMERA_ZOOM, FARM_LAYOUT, TILE_SIZE } from '../data/worldConfig';
 import { Camera } from '../engine/Camera';
@@ -510,42 +510,77 @@ export class HouseInteriorScene implements Scene {
       });
     }
 
-    // Oak Flower Bouquet Stand & Ceramic Vase (displays Yiyi's chosen classic bouquet!)
+    // Oak Flower Bouquet Stand & High-Detail Generated Bouquet Display (Yiyi's chosen bouquet!)
     const activeBouquet = getBouquetDef(this.world.selectedBouquetId);
-    const standSpriteKey = activeBouquet
+    const artSprite = activeBouquet
+      ? this.world.atlas.get(getBouquetArtSpriteKey(activeBouquet.id))
+      : undefined;
+    const pedestalSprite = this.world.atlas.get('interior_flower_pedestal');
+    const fallbackStandKey = activeBouquet
       ? activeBouquet.standSpriteKey
       : 'interior_flower_stand_empty';
-    const standSprite = this.world.atlas.get(standSpriteKey);
-    if (standSprite) {
-      const standDrawX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE - 2;
-      const standDrawY = (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE - standSprite.height + 2;
+    const fallbackStandSprite = this.world.atlas.get(fallbackStandKey);
+
+    if (activeBouquet && artSprite && pedestalSprite) {
+      const pedX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE - 2;
+      const pedY = (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE - pedestalSprite.height + 2;
+      // Scale bouquet generously so every rose spiral, ribbon, orchid & balloon reads crisply
+      const drawSize =
+        activeBouquet.id === 'rose_floyd_black'
+          ? 44
+          : activeBouquet.balloons !== 'none'
+            ? 40
+            : 36;
+      const artX = Math.round(pedX + pedestalSprite.width / 2 - drawSize / 2);
+      const artY = Math.round(pedY + 7 - drawSize);
+
       renderables.push({
         sortY: (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE,
         draw: (c) => {
-          c.drawImage(standSprite, standDrawX, standDrawY);
-          if (activeBouquet?.hasFairyLights) {
-            // Warm twinkling fairy-light halo over the 999 pink rose fairy-light bouquet!
+          c.drawImage(pedestalSprite, pedX, pedY);
+          // Warm contact shadow right under the bouquet base on the lace runner
+          c.save();
+          c.fillStyle = 'rgba(66, 36, 20, 0.24)';
+          c.beginPath();
+          c.ellipse(pedX + 18, pedY + 5.5, 11, 2.5, 0, 0, Math.PI * 2);
+          c.fill();
+          c.imageSmoothingEnabled = true;
+          c.imageSmoothingQuality = 'high';
+          c.drawImage(artSprite, artX, artY, drawSize, drawSize);
+          c.restore();
+
+          if (activeBouquet.hasFairyLights) {
             c.save();
             c.globalAlpha = 0.14 + Math.sin(this.elapsedTime * 5) * 0.04;
             c.fillStyle = '#ffe082';
             c.beginPath();
-            c.arc(standDrawX + 18, standDrawY + 14, 15, 0, Math.PI * 2);
+            c.arc(pedX + 18, artY + drawSize * 0.42, 16, 0, Math.PI * 2);
             c.fill();
             c.restore();
             const blink = Math.floor(this.elapsedTime * 4) % 2;
             c.fillStyle = '#ffffff';
-            c.fillRect(standDrawX + (blink === 0 ? 13 : 16), standDrawY + 12, 1, 1);
-            c.fillRect(standDrawX + (blink === 0 ? 22 : 19), standDrawY + 15, 1, 1);
-          } else if (activeBouquet) {
-            // Subtle blooming sparkle twinkle over the chosen giant bouquet
+            c.fillRect(pedX + (blink === 0 ? 11 : 15), artY + 12, 1.2, 1.2);
+            c.fillRect(pedX + (blink === 0 ? 23 : 19), artY + 15, 1.2, 1.2);
+          } else {
             const shimmer = Math.sin(this.elapsedTime * 3.5);
             if (shimmer > 0.35) {
-              const sy = standDrawY + 7 - Math.round(shimmer * 2);
+              const sy = artY + 6 - Math.round(shimmer * 2);
               c.fillStyle = '#fff9d6';
-              c.fillRect(standDrawX + 12, sy, 1, 1);
-              c.fillRect(standDrawX + 23, sy + 2, 1, 1);
+              c.fillRect(pedX + 10, sy, 1.2, 1.2);
+              c.fillRect(pedX + 25, sy + 2, 1.2, 1.2);
             }
-          } else {
+          }
+        },
+      });
+    } else if (fallbackStandSprite) {
+      const standDrawX = HOUSE_FIXTURES.flowerStand.x * TILE_SIZE - 2;
+      const standDrawY =
+        (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE - fallbackStandSprite.height + 2;
+      renderables.push({
+        sortY: (HOUSE_FIXTURES.flowerStand.y + 1) * TILE_SIZE,
+        draw: (c) => {
+          c.drawImage(fallbackStandSprite, standDrawX, standDrawY);
+          if (!activeBouquet) {
             // Gentle floating blossom hint bubble over empty vase so Yiyi spots it naturally
             const bob = Math.round(Math.sin(this.elapsedTime * 3.2) * 1.4);
             const bx = standDrawX + 14;
