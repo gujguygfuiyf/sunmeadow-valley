@@ -10,6 +10,7 @@ import { getFurnitureDef } from '../data/furniture';
 import { getItemDef, type UpgradeableToolKind } from '../data/items';
 import { TOOL_TIERS, UPGRADEABLE_TOOL_NAMES } from '../data/mining';
 import { getRecipeDef } from '../data/recipes';
+import { isBirthdaySeasonActive } from '../data/birthdaySchedule';
 import { getBouquetDef, type BouquetId } from '../data/bouquets';
 import { CAT_BREED_IDS, getCatBreedDef, type CatBreedId } from '../data/pets';
 import { FARM_LAYOUT, TILE_SIZE, TOWN_ENTRY } from '../data/worldConfig';
@@ -100,6 +101,7 @@ export class GameWorld {
   indoorBirthdayGathering = false;
   selectedBouquetId: BouquetId | null = null;
   bouquetNote = '';
+  private birthdayOverride: boolean | null = null;
 
   private sceneSwitcher:
     | ((target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }) => void)
@@ -111,6 +113,20 @@ export class GameWorld {
     this.audio = deps.audio;
     this.saveManager = deps.saveManager;
     this.input = deps.input;
+    this.isBirthdayActive();
+  }
+
+  /** Overrides the 12.03 birthday schedule gate (mainly for automated tests). */
+  setBirthdayOverride(active: boolean | null): void {
+    this.birthdayOverride = active;
+    this.isBirthdayActive();
+  }
+
+  /** Returns true on/after Dec 3 (Beijing Time) or when explicitly previewed via `?preview=1203`. */
+  isBirthdayActive(now?: Date): boolean {
+    const active = this.birthdayOverride ?? isBirthdaySeasonActive(now);
+    this.house.birthdayTableActive = active;
+    return active;
   }
 
   bindSceneSwitcher(
@@ -120,7 +136,11 @@ export class GameWorld {
   }
 
   travelTo(target: SceneId, spawnTile?: { x: number; y: number; facing?: FacingDir }): void {
-    const leavingIndoorCelebration = this.currentSceneId === 'house' && target === 'farm' && this.indoorBirthdayGathering;
+    const leavingIndoorCelebration =
+      this.isBirthdayActive() &&
+      this.currentSceneId === 'house' &&
+      target === 'farm' &&
+      this.indoorBirthdayGathering;
     if (target !== 'farm') {
       this.endBirthdayCelebration();
       this.indoorBirthdayGathering = false;
@@ -404,7 +424,8 @@ export class GameWorld {
      COMPANION CATS (ADOPT, PET, TREAT, WATER BOWL, FOLLOW)
      ========================================================= */
 
-  claimBirthdayGift(): 'claimed' | 'already-claimed' | 'bag-full' | 'save-failed' {
+  claimBirthdayGift(): 'claimed' | 'already-claimed' | 'bag-full' | 'save-failed' | 'locked' {
+    if (!this.isBirthdayActive()) return 'locked';
     if (this.birthdayGiftClaimed) return 'already-claimed';
     const slots = this.inventory.slotsWithItemsAdded(BIRTHDAY_GIFT);
     if (!slots) return 'bag-full';
@@ -433,6 +454,7 @@ export class GameWorld {
   }
 
   startBirthdayCelebration(): void {
+    if (!this.isBirthdayActive()) return;
     if (this.currentSceneId !== 'farm') {
       this.travelTo('farm', { ...FARM_LAYOUT.spawnTile, facing: 'down' });
     }
@@ -443,11 +465,15 @@ export class GameWorld {
     this.saveGameState();
   }
 
-  /** Opens the porch mailbox letter addressed to Yiyi (12.03) inside the native wooden letter dialog. */
+  /** Opens the porch mailbox letter addressed to Yiyi (12.03) once Dec 3 arrives. */
   openPorchMailbox(): void {
+    this.audio.play('ui');
+    if (!this.isBirthdayActive()) {
+      this.toast('📬 门廊信箱里现在空空如也，还没有新来信～');
+      return;
+    }
     const firstRead = !this.birthdayLetterRead;
     this.birthdayLetterRead = true;
-    this.audio.play('ui');
     if (firstRead) {
       this.saveGameState();
     }
@@ -493,6 +519,7 @@ export class GameWorld {
    * gathers both real-cat companions around the table, and launches in-world pixel heart fireworks!
    */
   interactWithBirthdayCake(): void {
+    if (!this.isBirthdayActive()) return;
     const cakeX = (HOUSE_FIXTURES.birthdayTable.x + 1) * TILE_SIZE;
     const cakeY = HOUSE_FIXTURES.birthdayTable.y * TILE_SIZE;
 
@@ -1294,7 +1321,10 @@ export class GameWorld {
       }
     }
 
-    if (targetScene !== 'farm') this.pets.celebratingOnFarm = false;
+    if (targetScene !== 'farm' || !this.isBirthdayActive()) {
+      this.pets.celebratingOnFarm = false;
+      this.indoorBirthdayGathering = false;
+    }
     this.placeCatsForCurrentSchedule();
     return true;
   }

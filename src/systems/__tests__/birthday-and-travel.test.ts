@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameWorld } from '../../core/GameWorld';
+import { isBirthdaySeasonActive } from '../../data/birthdaySchedule';
 import { FARM_LAYOUT, TOWN_ENTRY, TILE_SIZE } from '../../data/worldConfig';
 import { AudioManager } from '../../engine/AudioManager';
 import { EventBus } from '../../engine/EventBus';
@@ -18,12 +19,14 @@ function memorySave(): SaveManager {
   });
 }
 
-function game(saveManager = memorySave()): GameWorld {
+function game(saveManager = memorySave(), birthdayActive = true): GameWorld {
   const audio = new AudioManager();
   audio.setMuted(true);
-  return new GameWorld({
+  const world = new GameWorld({
     bus: new EventBus(), audio, saveManager, input: {} as InputManager, atlas: {} as SpriteAtlas,
   });
+  world.setBirthdayOverride(birthdayActive);
+  return world;
 }
 
 const contents = (world: GameWorld) =>
@@ -179,6 +182,37 @@ describe('Birthday companions', () => {
     restored.resetFarm();
     expect(restored.selectedBouquetId).toBeNull();
     expect(restored.bouquetNote).toBe('');
+  });
+
+  it('hides all birthday elements before Dec 3 (Beijing Time) while keeping the flower stand active, then unlocks at 12.03 00:00 UTC+8', () => {
+    // Schedule boundary checks in Beijing Time (UTC+8)
+    expect(isBirthdaySeasonActive(new Date('2026-11-27T12:00:00Z'))).toBe(false);
+    expect(isBirthdaySeasonActive(new Date('2026-12-02T15:59:59Z'))).toBe(false); // Dec 2 23:59:59 BJT
+    expect(isBirthdaySeasonActive(new Date('2026-12-02T16:00:00Z'))).toBe(true); // Dec 3 00:00:00 BJT
+    expect(isBirthdaySeasonActive(new Date('2026-12-03T10:00:00Z'))).toBe(true);
+
+    const world = game(memorySave(), false);
+    expect(world.isBirthdayActive()).toBe(false);
+    // Cake table has no collision or interaction zone before Dec 3
+    expect(world.house.isSolid(HOUSE_FIXTURES.birthdayTable.x, HOUSE_FIXTURES.birthdayTable.y)).toBe(false);
+    expect(world.house.isBirthdayTableZone(HOUSE_FIXTURES.birthdayTable.x, HOUSE_FIXTURES.birthdayTable.y + 1)).toBe(false);
+    // Mailbox stays empty and does not emit birthday letter modal
+    let letterOpened = 0;
+    world.bus.on('ui:openMailboxLetter', () => {
+      letterOpened += 1;
+    });
+    world.openPorchMailbox();
+    expect(letterOpened).toBe(0);
+    expect(world.birthdayLetterRead).toBe(false);
+    expect(world.claimBirthdayGift()).toBe('locked');
+    world.interactWithBirthdayCake();
+    expect(world.birthdayCandlesLit).toBe(true);
+    expect(world.indoorBirthdayGathering).toBe(false);
+
+    // Flower stand MUST remain active before Dec 3 so bouquet selection works in advance!
+    expect(world.house.isSolid(HOUSE_FIXTURES.flowerStand.x, HOUSE_FIXTURES.flowerStand.y)).toBe(true);
+    expect(world.chooseCabinBouquet('rose_white')).toBe(true);
+    expect(world.selectedBouquetId).toBe('rose_white');
   });
 });
 

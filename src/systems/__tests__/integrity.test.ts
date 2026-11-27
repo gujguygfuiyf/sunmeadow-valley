@@ -5,7 +5,6 @@ import {
   BOUQUET_CATALOG,
   BOUQUET_IDS,
   getBouquetDef,
-  getBouquetPhotoUrl,
   getBouquetSpriteUrl,
 } from '../../data/bouquets';
 import { COLLECTION_GROUPS, COMMUNITY_BUNDLES } from '../../data/bundles';
@@ -95,13 +94,12 @@ describe('Data Catalog Referential Integrity Audit', () => {
     }
   });
 
-  it('ensures all 16 farmhouse bouquets have valid catalog entries, florist SKUs, photo URLs, and legacy save compatibility', () => {
+  it('ensures all 16 farmhouse bouquets have valid catalog entries, florist SKUs, pixel sprite URLs, and legacy save compatibility', () => {
     expect(BOUQUET_IDS).toHaveLength(16);
     for (const id of BOUQUET_IDS) {
       const def = BOUQUET_CATALOG[id];
       expect(def, `Missing bouquet ${id}`).toBeDefined();
       expect(def.floristSku.trim().length).toBeGreaterThan(0);
-      expect(getBouquetPhotoUrl(id)).toMatch(new RegExp(`assets/bouquets/${id}\\.jpg$`));
       expect(getBouquetSpriteUrl(id)).toMatch(new RegExp(`assets/bouquets/sprites/${id}\\.png$`));
     }
     expect(getBouquetDef('rose_red')?.id).toBe('rose_red_white');

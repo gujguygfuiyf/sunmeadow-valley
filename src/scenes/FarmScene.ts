@@ -924,9 +924,13 @@ export class FarmScene implements Scene {
         if (nearbyZone === 'house_door') {
           prompt = '按 E 进入农舍小屋（电视天气预报 / 厨房烹饪 / 自由装修 / 休息）';
         } else if (nearbyZone === 'mailbox') {
-          prompt = this.world.birthdayLetterRead
-            ? '门廊信箱：按 E 重读寄给依依的 12.03 火漆来信'
-            : '门廊信箱：按 E 或点击拆开一封寄给依依的火漆来信';
+          if (!this.world.isBirthdayActive()) {
+            prompt = '门廊信箱：按 E 查看信箱（暂时还没有新来信）';
+          } else {
+            prompt = this.world.birthdayLetterRead
+              ? '门廊信箱：按 E 重读寄给依依的 12.03 火漆来信'
+              : '门廊信箱：按 E 或点击拆开一封寄给依依的火漆来信';
+          }
         } else if (nearbyZone === 'pet_bowl') {
           if (!this.world.pets.hasAnyCat()) {
             prompt = '猫咪水碗：按 E 或点击领养你的两只专属小猫咪！(按 P)';
@@ -1167,9 +1171,11 @@ export class FarmScene implements Scene {
       });
     }
 
-    // Porch Mailbox beside the farmhouse front door
+    // Porch Mailbox beside the farmhouse front door (shows unread 12.03 mail only once Dec 3 arrives)
+    const hasUnreadBirthdayMail =
+      this.world.isBirthdayActive() && !this.world.birthdayLetterRead;
     const mailboxSprite = this.world.atlas.get(
-      this.world.birthdayLetterRead ? 'farm_mailbox_read' : 'farm_mailbox_unread'
+      hasUnreadBirthdayMail ? 'farm_mailbox_unread' : 'farm_mailbox_read'
     );
     if (mailboxSprite) {
       renderables.push({
@@ -1178,8 +1184,8 @@ export class FarmScene implements Scene {
           const mx = FARM_LAYOUT.mailbox.x * TILE_SIZE;
           const my = (FARM_LAYOUT.mailbox.y + 1) * TILE_SIZE - mailboxSprite.height;
           c.drawImage(mailboxSprite, mx, my);
-          // Classic Stardew unread letter bubble bobbing gently above mailbox
-          if (!this.world.birthdayLetterRead) {
+          // Classic Stardew unread letter bubble bobbing gently above mailbox (only on/after Dec 3)
+          if (hasUnreadBirthdayMail) {
             const bob = Math.round(Math.sin(this.elapsedTime * 3.8) * 1.6);
             const ex = mx + 3;
             const ey = my - 8 + bob;
@@ -1381,7 +1387,7 @@ export class FarmScene implements Scene {
     this.world.weather.renderOutdoor(ctx, viewportWidth, viewportHeight, seasonId);
 
     // Optional Yiyi 12.03 Romantic Sakura & Rose Petal Shower on Farm!
-    if (this.world.pets.celebratingOnFarm) {
+    if (this.world.isBirthdayActive() && this.world.pets.celebratingOnFarm) {
       this.renderBirthdayPetalShower(ctx, viewportWidth, viewportHeight);
     }
 
@@ -1453,7 +1459,7 @@ export class FarmScene implements Scene {
     };
 
     label((FARM_LAYOUT.mineTrail.x + 1.5) * TILE_SIZE, 2.2 * TILE_SIZE, '▲ 晨露矿洞', '#d6d0ff');
-    if (this.world.pets.celebratingOnFarm) {
+    if (this.world.isBirthdayActive() && this.world.pets.celebratingOnFarm) {
       label(
         (FARM_LAYOUT.house.x + 2.5) * TILE_SIZE,
         FARM_LAYOUT.house.y * TILE_SIZE - 10,

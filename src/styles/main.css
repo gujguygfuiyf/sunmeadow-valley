@@ -27,8 +27,8 @@
   --berry-red: #c4443b;
   --heart-pink: #e24768;
 
-  --font-ui: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
-  --font-pixel: 'Silkscreen', 'Noto Sans SC', monospace;
+  --font-ui: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  --font-pixel: 'SFMono-Regular', 'Cascadia Mono', 'Consolas', 'PingFang SC', 'Microsoft YaHei', monospace;
 
   --shadow-pixel: 0 4px 0 rgba(36, 17, 7, 0.45), 0 8px 20px rgba(28, 14, 6, 0.35);
 }
@@ -1793,22 +1793,31 @@ body {
 }
 
 .flower-preview-photo-frame {
-  flex: 0 0 132px;
-  width: 132px;
-  height: 132px;
-  border-radius: 7px;
+  flex: 0 0 134px;
+  width: 134px;
+  height: 134px;
+  padding: 8px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 3px solid #c99a6b;
-  background: #f5e6cc;
-  box-shadow: 0 3px 10px rgba(72, 37, 18, 0.22);
+  border: 3px solid #9e6238;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 246, 224, 0.34), rgba(130, 74, 34, 0.16) 78%),
+    repeating-linear-gradient(180deg, #ca8d54 0px, #ca8d54 13px, #a56936 14px);
+  box-shadow:
+    inset 0 1px 5px rgba(59, 31, 18, 0.28),
+    0 3px 10px rgba(72, 37, 18, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .flower-preview-photo {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   image-rendering: auto;
+  filter: drop-shadow(0 4px 5px rgba(45, 22, 10, 0.38));
 }
 
 .flower-preview-info {
@@ -1854,42 +1863,6 @@ body {
   color: var(--ink-muted);
 }
 
-.flower-preview-cabin-box {
-  flex: 0 0 106px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 6px;
-  border-radius: 7px;
-  border: 2px solid #9e6238;
-  background: repeating-linear-gradient(
-    180deg,
-    #ca8d54 0px,
-    #ca8d54 11px,
-    #a56936 12px
-  );
-  box-shadow: inset 0 1px 4px rgba(59, 31, 18, 0.25);
-}
-
-.flower-preview-cabin-img {
-  width: 84px;
-  height: 84px;
-  object-fit: contain;
-  display: block;
-  image-rendering: auto;
-  filter: drop-shadow(0 3px 3px rgba(45, 22, 10, 0.35));
-}
-
-.flower-preview-cabin-label {
-  font-size: 10px;
-  font-weight: 900;
-  color: #fffaf0;
-  background: rgba(74, 37, 18, 0.82);
-  padding: 1px 6px;
-  border-radius: 999px;
-}
-
 .flower-stand-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1932,18 +1905,25 @@ body {
 .flower-card-photo-wrap {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 5px;
+  padding: 8px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 2px solid #cfa574;
-  background: #f0dec0;
+  border: 2px solid #b57b48;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 248, 232, 0.42), rgba(140, 82, 38, 0.12) 80%),
+    repeating-linear-gradient(180deg, #d1965d 0px, #d1965d 12px, #b67a44 13px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .flower-card-photo {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   image-rendering: auto;
+  filter: drop-shadow(0 3px 3px rgba(45, 22, 10, 0.34));
   transition: transform 0.18s ease;
 }
 

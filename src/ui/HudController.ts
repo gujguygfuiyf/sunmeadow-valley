@@ -25,7 +25,6 @@ import { getNpcDef, NPC_IDS } from '../data/npcs';
 import {
   BOUQUET_IDS,
   getBouquetDef,
-  getBouquetPhotoUrl,
   getBouquetSpriteUrl,
   type BouquetId,
 } from '../data/bouquets';
@@ -310,6 +309,7 @@ export class HudController {
   }
 
   openBirthday(): void {
+    if (!this.world.isBirthdayActive()) return;
     if (this.activeModal === 'summary') return;
     this.closeModals();
     this.birthdayOverlay.open();
@@ -1795,14 +1795,14 @@ export class HudController {
 
     const draftDef = getBouquetDef(this.draftBouquetId) ?? getBouquetDef(BOUQUET_IDS[0]);
 
-    // Enlarged high-clarity preview banner for the currently highlighted bouquet
+    // Enlarged pixel-art bouquet preview banner for the currently highlighted bouquet
     this.flowerStandPreviewEl.innerHTML = '';
     if (draftDef) {
       const frame = document.createElement('div');
       frame.className = 'flower-preview-photo-frame';
       const bigImg = document.createElement('img');
       bigImg.className = 'flower-preview-photo';
-      bigImg.src = getBouquetPhotoUrl(draftDef.id);
+      bigImg.src = getBouquetSpriteUrl(draftDef.id);
       bigImg.alt = draftDef.name;
       bigImg.onerror = () => {
         bigImg.onerror = null;
@@ -1843,24 +1843,6 @@ export class HudController {
       info.appendChild(hint);
 
       this.flowerStandPreviewEl.appendChild(info);
-
-      // Right mini wood-floor preview showing the exact AI-generated cozy pixel-art cabin sprite!
-      const cabinCard = document.createElement('div');
-      cabinCard.className = 'flower-preview-cabin-box';
-      const cabinImg = document.createElement('img');
-      cabinImg.className = 'flower-preview-cabin-img';
-      cabinImg.src = getBouquetSpriteUrl(draftDef.id);
-      cabinImg.alt = `${draftDef.name} 小屋效果`;
-      cabinImg.onerror = () => {
-        cabinImg.onerror = null;
-        cabinImg.src = this.world.atlas.getIconDataUrl(draftDef.spriteKey);
-      };
-      cabinCard.appendChild(cabinImg);
-      const cabinCap = document.createElement('span');
-      cabinCap.className = 'flower-preview-cabin-label';
-      cabinCap.textContent = '小屋摆放预览';
-      cabinCard.appendChild(cabinCap);
-      this.flowerStandPreviewEl.appendChild(cabinCard);
     }
 
     const prevScrollTop = this.flowerStandGridEl.scrollTop;
@@ -1881,7 +1863,7 @@ export class HudController {
 
       const photo = document.createElement('img');
       photo.className = 'flower-card-photo';
-      photo.src = getBouquetPhotoUrl(def.id);
+      photo.src = getBouquetSpriteUrl(def.id);
       photo.alt = def.name;
       photo.loading = 'lazy';
       photo.onerror = () => {

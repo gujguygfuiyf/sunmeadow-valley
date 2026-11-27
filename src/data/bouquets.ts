@@ -363,15 +363,6 @@ export function getBouquetDef(id: string | null | undefined): BouquetDef | undef
 }
 
 /**
- * Returns the relative/base-aware URL for the clean high-clarity bouquet photo
- * bundled in `public/assets/bouquets/<id>.jpg` (safe on GitHub Pages subpaths).
- */
-export function getBouquetPhotoUrl(id: BouquetId): string {
-  const base = (import.meta.env?.BASE_URL ?? './').replace(/\/?$/, '/');
-  return `${base}assets/bouquets/${id}.jpg`;
-}
-
-/**
  * Returns the relative/base-aware URL for the AI-generated cozy pixel-art transparent PNG
  * bouquet sprite bundled in `public/assets/bouquets/sprites/<id>.png`.
  */

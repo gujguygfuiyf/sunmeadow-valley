@@ -484,30 +484,32 @@ export class HouseInteriorScene implements Scene {
       });
     }
 
-    // Cozy Strawberry Birthday Cake Table (Yiyi 12.03 in-world easter egg!)
-    const cakeFrame = Math.floor(this.elapsedTime * 5) % 2;
-    const cakeSpriteKey = this.world.birthdayCandlesLit
-      ? `interior_cake_table_lit_${cakeFrame}`
-      : 'interior_cake_table_blown';
-    const cakeSprite = this.world.atlas.get(cakeSpriteKey);
-    if (cakeSprite) {
-      const cakeDrawX = HOUSE_FIXTURES.birthdayTable.x * TILE_SIZE;
-      const cakeDrawY = (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE - cakeSprite.height + 2;
-      renderables.push({
-        sortY: (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE,
-        draw: (c) => {
-          c.drawImage(cakeSprite, cakeDrawX, cakeDrawY);
-          if (this.world.birthdayCandlesLit) {
-            c.save();
-            c.globalAlpha = 0.16 + Math.sin(this.elapsedTime * 6) * 0.035;
-            c.fillStyle = '#ffd57a';
-            c.beginPath();
-            c.arc(cakeDrawX + 16, cakeDrawY + 4, 20, 0, Math.PI * 2);
-            c.fill();
-            c.restore();
-          }
-        },
-      });
+    // Cozy Strawberry Birthday Cake Table (unlocks automatically on 12.03 Beijing Time)
+    if (this.world.isBirthdayActive()) {
+      const cakeFrame = Math.floor(this.elapsedTime * 5) % 2;
+      const cakeSpriteKey = this.world.birthdayCandlesLit
+        ? `interior_cake_table_lit_${cakeFrame}`
+        : 'interior_cake_table_blown';
+      const cakeSprite = this.world.atlas.get(cakeSpriteKey);
+      if (cakeSprite) {
+        const cakeDrawX = HOUSE_FIXTURES.birthdayTable.x * TILE_SIZE;
+        const cakeDrawY = (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE - cakeSprite.height + 2;
+        renderables.push({
+          sortY: (HOUSE_FIXTURES.birthdayTable.y + 1) * TILE_SIZE,
+          draw: (c) => {
+            c.drawImage(cakeSprite, cakeDrawX, cakeDrawY);
+            if (this.world.birthdayCandlesLit) {
+              c.save();
+              c.globalAlpha = 0.16 + Math.sin(this.elapsedTime * 6) * 0.035;
+              c.fillStyle = '#ffd57a';
+              c.beginPath();
+              c.arc(cakeDrawX + 16, cakeDrawY + 4, 20, 0, Math.PI * 2);
+              c.fill();
+              c.restore();
+            }
+          },
+        });
+      }
     }
 
     // Oak Flower Bouquet Stand & High-Detail Generated Bouquet Display (Yiyi's chosen bouquet!)
@@ -698,7 +700,7 @@ export class HouseInteriorScene implements Scene {
     this.world.particles.renderWorld(ctx);
     ctx.restore();
 
-    if (this.world.indoorBirthdayGathering) {
+    if (this.world.isBirthdayActive() && this.world.indoorBirthdayGathering) {
       this.renderIndoorPetalShower(ctx, viewportWidth, viewportHeight);
     }
 
@@ -707,7 +709,7 @@ export class HouseInteriorScene implements Scene {
 
   private shouldShowCatsIndoors(): boolean {
     return (
-      this.world.indoorBirthdayGathering ||
+      (this.world.isBirthdayActive() && this.world.indoorBirthdayGathering) ||
       this.world.pets.isInScene('house', this.world.weather.isRainy(), this.world.time.minutes)
     );
   }
